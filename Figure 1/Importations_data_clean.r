@@ -1,26 +1,41 @@
-library(ggplot2)
-library(patchwork)
-library(readxl)
+# Title: Data cleaning
+# Date: June 14, 2022
+# Description: Produces data files travel-related cases per week to Atlantic
+#    Canada & territories from the COVID-19 Canada Open Data Working Group (CCODWG)
+#    Appends validation data for NB and NL
+#    Uses PHAC data source to record active cases per 10K people
+#    CCODWG files are large
+#======================
+
 library(dplyr)
 
-### These are the commands that were used to construct the dataset, but they are now commented out to
-### Just call a smaller cleaned dataset
-
+## PULLING THE DATA FILES
 # This is to pull the data a copy of the PHAC data for active cases
-# This is the province-level data
 PHAC.data <- read.csv('https://raw.githubusercontent.com/ahurford/covid-nl/master/covid19-download.csv')
 # This adds the report week to the PHAC data so that it is consistent with CCODWG
 PHAC.data <- select(PHAC.data,date,numtoday,numactive,prname)%>%
-  mutate(report_week = as.Date(cut(as.Date(date),"week", start.on.monday = F)))
-
-
+  mutate(report_week = as.Date(cut(as.Date(date),"week", start.on.monday = F)))%>%
+  distinct()
 ## These datasets are inidividual-level from the COVID-19 Canada Open data working group. They give travel-related
-# cases. The are large files. I will clean and archive just the travel-related cases.
-#These individual-level data files are too large to share
+# cases. The are large files.
 CCODWG.2020=read.csv('https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/retired_datasets/individual_level/cases_2020.csv', fill=TRUE)
 CCODWG.2021=read.csv('https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/retired_datasets/individual_level/cases_2021_1.csv', fill = TRUE)
 CCODWG.2021b=read.csv('https://raw.githubusercontent.com/ishaberry//Covid19Canada/master/retired_datasets/individual_level/cases_2021_2.csv', fill = TRUE)
+# These are data files obtained by the researchers
+# Append report week
+NL.travel.2 = read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL-travel.csv', fill=TRUE)%>%
+  mutate(report_week = as.Date(cut(as.Date(REPORTED_DATE),"week", start.on.monday = F)))%>%
+  distinct()
+NL.travel.2.daily = select(NL.travel.2, REPORTED_DATE, TRAVEL)
+NB.travel.2 = read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NB-travel.csv', fill=TRUE)[,1:2]
+NB.travel.2$Date = format(as.Date(NB.travel.2$Date, format = "%m/%d/%y"),"%Y-%m-%d")
+NB.travel.2 = NB.travel.2%>%
+  mutate(report_week = as.Date(cut(as.Date(Date),"week", start.on.monday = F)))%>%
+  distinct()
+NB.travel.2.daily = select(NB.travel.2, Date, Travel.related.Cases)
 
+
+## TRAVEL-RELATED CASES FROM CCODWG
 # Correcting some syntax inconsistencies
 CCODWG.2020$locally_acquired[CCODWG.2020$locally_acquired =="Close contact"] = "Close Contact"
 CCODWG.2020$locally_acquired[CCODWG.2020$locally_acquired =="close contact"] = "Close Contact"
@@ -110,64 +125,123 @@ travel = full_join(NL.travel,NS.travel)%>%
   full_join(NB.travel)%>%
   full_join(PEI.travel)%>%
   full_join(YT.travel)%>%
-  full_join(NWT.travel)
-
-### FRANCIS THIS IS WHERE I GOT UP TO. NEXT IT WOULD BE GOOD TO GET ACTIVE CASES
-### FOR ALL THE PROVINCES PER 10K PEOPLE (FROM THE PHAC DATA SOURCE - ALREADY LOADED)
-### AND TO ADD THE ALTERNATIVE BILAL AND NFLD TRAVEL-RELATED CASE DATA - I'M JUST NOT SURE
-### THAT THE NL NLCHI DATA SHOULD BE MADE PUBLIC - MAYBE CALL THAT FROM A LOCAL DIRECTORY
-### MAYBE CALL THESE: NL.travel.2 and NB.travel.2.
-#######
+  full_join(NWT.travel)%>%
+  arrange(report_week)
 
 
-# Weekly active cases in all provinces per 10K people
-# province sizes based on
-AB.active <- 1e4*CCODWG[CCODWG$province=="Alberta",6]/4067175
-BC.active <- 1e4*CCODWG[CCODWG$province=="BC",6]/4648055
-SK.active <- 1e4*CCODWG[CCODWG$province=="Saskatchewan",6]/1098352
-MB.active <- 1e4*CCODWG[CCODWG$province=="Manitoba",6]/1278365
-ON.active <- 1e4*CCODWG[CCODWG$province=="Ontario",6]/13448494
-# In QC there is a change in how active cases are reported on July 17, 2020.
-QC.active <- CCODWG[CCODWG$province=="Quebec",]
-change.index = which(QC.active$active_cases_change==min(QC.active$active_cases_change))
-QC.scale = QC.active[change.index,]$active_cases/QC.active[change.index-1,]$active_cases
-# Rescale active cases prior to July 17, 2020:
-QC.active$active_cases[1:change.index-1] <- QC.scale*QC.active$active_cases[1:change.index-1]
-QC.active = 1e4*QC.active$active_cases/8164361
-NS.active <- 1e4*CCODWG[CCODWG$province=="Nova Scotia",6]/923598
-PEI.active <- 1e4*CCODWG[CCODWG$province=="PEI",6]/142907
-NB.active <- 1e4*CCODWG[CCODWG$province=="New Brunswick",6]/747101
-NL.active <- 1e4*CCODWG[CCODWG$province=="NL",6]/519716
-NV.active <- 1e4*CCODWG[CCODWG$province=="Nunavut",6]/35944
-NWT.active <- 1e4*CCODWG[CCODWG$province=="NWT",6]/41786
-YT.active <- 1e4*CCODWG[CCODWG$province=="Yukon",6]/35874
+## AV. WEEKLY ACTIVE CASES PER 10K PEOPLE FROM PHAC
+# Weekly active cases in all provinces per 10K people - to be used as explanatory variables
+#https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000901
+#Q1 2021
+NL.pop<-519664
+PEI.pop<-161514
+NS.pop<-982012
+NB.pop<-784156
+QC.pop<-8579370
+ON.pop<-14759431
+MB.pop<-1381459
+SK.pop<-1178971
+AB.pop<-4431454
+BC.pop<-5163919
+
+active.fun = function(prov,pop){ 
+  active = filter(PHAC.data, prname==prov)%>%
+  group_by(report_week)%>%
+  add_tally(numactive)%>%
+  mutate("av.active"=n/7)%>%
+  mutate("active.per.10K" = 1e4*av.active/pop)%>%
+  select(report_week,active.per.10K)%>%
+  distinct()
+}
+
+BC.active = active.fun("British Columbia", BC.pop)%>%
+  rename("BC.active"=active.per.10K)
+AB.active = active.fun("Alberta", AB.pop)%>%
+  rename("AB.active"=active.per.10K)
+SK.active = active.fun("Saskatchewan", SK.pop)%>%
+  rename("SK.active"=active.per.10K)
+MB.active = active.fun("Manitoba", MB.pop)%>%
+  rename("MB.active"=active.per.10K)
+ON.active = active.fun("Ontario", ON.pop)%>%
+  rename("ON.active"=active.per.10K)
+QC.active = active.fun("Quebec", QC.pop)%>%
+  rename("QC.active"=active.per.10K)
+NB.active = active.fun("New Brunswick", NB.pop)%>%
+  rename("NB.active"=active.per.10K)
+NS.active = active.fun("Nova Scotia", NS.pop)%>%
+  rename("NS.active"=active.per.10K)
+
+active = full_join(BC.active, AB.active)%>%
+  full_join(SK.active)%>%
+  full_join(MB.active)%>%
+  full_join(ON.active)%>%
+  full_join(QC.active)%>%
+  full_join(NB.active)%>%
+  full_join(NS.active)%>%
+  distinct()
 
 
-Canada.data = data.frame(date=as.Date(CCODWG[CCODWG$province=="Alberta",2],format="%d-%m-%Y"),AB = AB.active,BC=BC.active,SK=SK.active,MB=MB.active,ON=ON.active,QC=QC.active,NS=NS.active,NB=NB.active,PEI=PEI.active,NL=NL.active,YT=YT.active,NV=NV.active,NWT=NWT.active, NL.new = NL.new, NS.new = NS.new, NB.new = NB.new, PEI.new = PEI.new, YT.new = YT.new, NWT.new = NWT.new)
-week = cut(as.Date(Canada.data$date), "week")
-Canada.data <- cbind(Canada.data,week)
-Canada.week = aggregate(Canada.data[,2:20], by = list(Canada.data$week),FUN = sum)
-Canada.week = data.frame(week = Canada.week[,1],Canada.week[,2:20])
-Canada.week$week = as.Date(Canada.week$week)
-# Begin the week of March 2, 2021 (remove first 6 weeks)
-Canada.week <- tail(Canada.week,-6)
+## TRAVEL-RELATED CASE DATA FROM EXTERNAL SOURCES
+NL.travel.2 = group_by(NL.travel.2,report_week)%>%
+  add_tally(TRAVEL)%>%
+  rename("NL.travel.2"="n")%>%
+  add_tally(CLOSE_CONTACT)%>%
+  rename("NL.contact.2"="n")%>%
+  select(report_week,NL.travel.2,NL.contact.2)%>%
+  distinct()
 
+NB.travel.2 = group_by(NB.travel.2,report_week)%>%
+  add_tally(Travel.related.Cases)%>%
+  rename("NB.travel.2"="n")%>%
+  select(report_week,NB.travel.2)%>%
+  distinct()
 
+travel = full_join(travel, NL.travel.2)%>%full_join(active)%>%
+  as.data.frame()
+# The NAs recreated are 0
+travel[is.na(travel)]=0
 
-# Data set assembled by Bilal:
-NB.Bilal <- read_excel("~/MUN/Amy_Paper/New_travel_cases_by_reported_date.csv")
-NB.Bilal <- as.data.frame(NB.Bilal)
-week1 = cut(as.Date(NB.Bilal$Date), "week")
-NB.Bilal <- cbind(NB.Bilal,week1)
-Bilal.week = aggregate(NB.Bilal[,2], by = list(NB.Bilal$week1),FUN = sum)
-Bilal.week = data.frame(week = Bilal.week[,1],cases=Bilal.week[,2])
-Bilal.week$week = as.Date(Bilal.week$week)
+# FOR NB.travel.2 only some NAs are 0 because NB.travel.2 does not cover the full time range
+travel = full_join(travel, NB.travel.2)%>%
+  arrange(report_week)
 
+# Constrain dates:
+# Few travel-related cases before July 5, 2020
+# No CCODWG data available after May 31, 2021
+travel = travel%>%filter(report_week>="2020-07-05" & report_week<="2021-05-30")
 
-NB2 = rep(NA, length(Canada.week[,1]))
-NB2[44:69] = Bilal.week[,2]
-Canada.week = data.frame(Canada.week, NL.dom = NL.travel$domestic, NL.int = NL.travel$international, NL.nr = NL.travel$not.reported, NS.dom = NS.travel$domestic, NS.int = NS.travel$international, NS.nr = NS.travel$not.reported,PEI.dom = PEI.travel$domestic, PEI.int = PEI.travel$international,PEI.nr = PEI.travel$not.reported, NB.dom = NB.travel$domestic, NB.int=NB.travel$international, NB.nr = NB.travel$not.reported,YT.dom = YT.travel$domestic, YT.int = YT.travel$international,YT.nr = YT.travel$not.reported, NWT.dom = NWT.travel$domestic, NWT.int = NWT.travel$international,NWT.nr = NWT.travel$not.reported,NB2=NB2)
-# write.csv(Canada.week,"~/Desktop/Work/Research/Research_Projects/2021/Reopening/reopening/Hurford/Canada_week.csv")
+## MAKE THE VALIDATION DATASETS - Do not aggregate by week
+province = "NL"
+travel.data.2020 <- CCODWG.2020[CCODWG.2020$province==province,]
+travel.data.2021 <- CCODWG.2021[CCODWG.2021$province==province,]
+travel.data.2021b <- CCODWG.2021b[CCODWG.2021b$province==province,]
+travel.data = rbind(travel.data.2020,travel.data.2021, travel.data.2021b)
+travel.data$date_report=format(as.Date(travel.data$date_report, format = "%d-%m-%Y"),"%Y-%m-%d")
+travel.data$report_week = format(as.Date(travel.data$report_week, format = "%d-%m-%Y"),"%Y-%m-%d")
+CCODWG.NL = data.frame(date_report=travel.data[travel.data$travel_yn==1 & travel.data$locally_acquired!="Close Contact",]$date_report, travel = 1)
+CCODWG.NL = group_by(CCODWG.NL,date_report)%>%
+  add_tally()%>%
+  distinct()%>%
+  select(date_report,n)
+  
 
-contacts.week = data.frame(week = NL.travel$week, NL = NL.travel$close.contact, NS = NS.travel$close.contact, PEI = PEI.travel$close.contact, NB = NB.travel$close.contact, NWT = NWT.travel$close.contact, YT = YT.travel$close.contact)
-# write.csv(contacts.week,"~/Desktop/Work/Research/Research_Projects/2021/Reopening/reopening/Hurford/contacts_week.csv")
+province = "New Brunswick"
+travel.data.2020 <- CCODWG.2020[CCODWG.2020$province==province,]
+travel.data.2021 <- CCODWG.2021[CCODWG.2021$province==province,]
+travel.data.2021b <- CCODWG.2021b[CCODWG.2021b$province==province,]
+travel.data = rbind(travel.data.2020,travel.data.2021, travel.data.2021b)
+travel.data$date_report=format(as.Date(travel.data$date_report, format = "%d-%m-%Y"),"%Y-%m-%d")
+travel.data$report_week = format(as.Date(travel.data$report_week, format = "%d-%m-%Y"),"%Y-%m-%d")
+CCODWG.NB = data.frame(date_report=travel.data[travel.data$travel_yn==1 & travel.data$locally_acquired!="Close Contact",]$date_report, travel = 1)
+CCODWG.NB = group_by(CCODWG.NB,date_report)%>%
+  add_tally()%>%
+  distinct()%>%
+  select(date_report,n)%>%
+  rename("CCODWG"=n)
+NB.travel.2.daily=rename(NB.travel.2.daily, "date_report" = Date, "NB.govt" = Travel.related.Cases)
+NB.validation = left_join(NB.travel.2.daily, CCODWG.NB)
+NL.travel.2.daily=rename(NL.travel.2.daily, "date_report" = REPORTED_DATE, "NLCHI" = TRAVEL)
+
+# There is a problem with the NLHCI data that needs to be fixed
+write.csv(travel, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/travel.csv")
+write.csv(active, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/active.csv")
