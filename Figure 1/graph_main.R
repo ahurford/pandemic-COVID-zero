@@ -40,9 +40,12 @@ total_activecases_per_week = head(sum_total,-3)
 week = as.Date(tail(canada_week$week,-3), format = "%Y-%m-%d")
 
 # -------------------------------------------------------------------------------------------
-# Remove 1st column, contains no useful info
+# Uncomment any of the codes below to visualize the plot for the provinces 
 # -------------------------------------------------------------------------------------------
 
-nwt_plots(canada_week, contacts_week)
+nl_plots(canada_week, contacts_week)
+# ns_plots(canada_week, contacts_week)
+# nwt_plots(canada_week, contacts_week)
+# pei_plots(canada_week, contacts_week)
 
 # -------------------------------------------------------------------------------------------
