@@ -8,8 +8,11 @@ library(dplyr)
 
 # This is to pull the data a copy of the PHAC data for active cases
 # This is the province-level data
-#PHAC.data <- read.csv('https://raw.githubusercontent.com/francisanokye/Pandemic-Modelling---COVID19/master/data/covid19-download.csv', fill = TRUE)
 PHAC.data <- read.csv('https://raw.githubusercontent.com/ahurford/covid-nl/master/covid19-download.csv')
+# This adds the report week to the PHAC data so that it is consistent with CCODWG
+PHAC.data <- select(PHAC.data,date,numtoday,numactive,prname)%>%
+  mutate(report_week = as.Date(cut(as.Date(date),"week", start.on.monday = F)))
+
 
 ## These datasets are inidividual-level from the COVID-19 Canada Open data working group. They give travel-related
 # cases. The are large files. I will clean and archive just the travel-related cases.
@@ -38,7 +41,8 @@ importations=function(province){
   travel.data.2021 <- CCODWG.2021[CCODWG.2021$province==province,]
   travel.data.2021b <- CCODWG.2021b[CCODWG.2021b$province==province,]
   travel.data = rbind(travel.data.2020,travel.data.2021, travel.data.2021b)
-  travel.data$date_report=as.Date(travel.data$date_report,format="%d-%m-%Y")
+  travel.data$date_report=format(as.Date(travel.data$date_report, format = "%d-%m-%Y"),"%Y-%m-%d")
+  travel.data$report_week = format(as.Date(travel.data$report_week, format = "%d-%m-%Y"),"%Y-%m-%d")
   # Only travel-related
   travel = travel.data[travel.data$travel_yn==1 & travel.data$locally_acquired!="Close Contact",]
   travel = select(travel,date_report,report_week,travel_yn,locally_acquired)%>%
@@ -47,6 +51,7 @@ importations=function(province){
     rename("travel"="n")%>%
     select(report_week,travel)%>%
     distinct()
+  travel$report_week=as.Date(travel$report_week)
   # Close contacts only
   contacts = travel.data[travel.data$travel_yn!=1 & travel.data$locally_acquired=="Close Contact",]
   contacts = select(contacts,date_report,report_week,travel_yn,locally_acquired)%>%
@@ -55,32 +60,64 @@ importations=function(province){
     rename("contacts"="n")%>%
     select(report_week,contacts)%>%
     distinct()
+  contacts$report_week=as.Date(contacts$report_week)
   # Travel and close contact:There is no data of this type - all close contacts are coded as not travel-related.
   travel.contacts = travel.data[travel.data$travel_yn==1 & travel.data$locally_acquired=="Close Contact",]$date_report
-  # Total new cases
-  
-  
-  travel2=full_join(travel,contacts)
 
-  
-  return(travel)
+  if(province=="NL"){
+    province="Newfoundland and Labrador"
+  }
+  if(province=="PEI"){
+    province="Prince Edward Island"
+  }
+  if(province=="NWT"){
+  province="Northwest Territories"
+  }
+  data = filter(PHAC.data, prname == province)%>%
+    group_by(report_week)%>%
+    add_tally(numtoday)%>%
+    rename("new_cases"="n")%>%
+    select(report_week,new_cases)%>%
+    distinct()
+  data=full_join(travel,contacts)%>%full_join(data)
 }
 
-NL.travel = importations("NL")
-# No values after May 31
-NL.travel[67:69,2:5]=rep(NA,12)
-NS.travel = importations("Nova Scotia")
-NS.travel[67:69,2:5]=rep(NA,12)
-YT.travel = importations("Yukon")
-YT.travel[67:69,2:5]=rep(NA,12)
-NB.travel = importations("New Brunswick")
-NB.travel[67:69,2:5]=rep(NA,12)
-PEI.travel = importations("PEI")
-PEI.travel[67:69,2:5]=rep(NA,12)
-#Nunavut has no travel-related cases reported
-NWT.travel = importations("NWT")
-NWT.travel[67:69,2:5]=rep(NA,12)
+NL.travel = importations("NL")%>%
+  rename("NL_travel"=travel)%>%
+  rename("NL_contacts"=contacts)%>%
+  rename("NL_new_cases"=new_cases)
+NS.travel = importations("Nova Scotia")%>%
+  rename("NS_travel"=travel)%>%
+  rename("NS_contacts"=contacts)%>%
+  rename("NS_new_cases"=new_cases)
+YT.travel = importations("Yukon")%>%
+  rename("YT_travel"=travel)%>%
+  rename("YT_contacts"=contacts)%>%
+  rename("YT_new_cases"=new_cases)
+NB.travel = importations("New Brunswick")%>%
+  rename("NB_travel"=travel)%>%
+  rename("NB_contacts"=contacts)%>%
+  rename("NB_new_cases"=new_cases)
+PEI.travel = importations("PEI")%>%
+  rename("PEI_travel"=travel)%>%
+  rename("PEI_contacts"=contacts)%>%
+  rename("PEI_new_cases"=new_cases)
+NWT.travel = importations("NWT")%>%
+  rename("NWT_travel"=travel)%>%
+  rename("NWT_contacts"=contacts)%>%
+  rename("NWT_new_cases"=new_cases)
+travel = full_join(NL.travel,NS.travel)%>%
+  full_join(NB.travel)%>%
+  full_join(PEI.travel)%>%
+  full_join(YT.travel)%>%
+  full_join(NWT.travel)
 
+### FRANCIS THIS IS WHERE I GOT UP TO. NEXT IT WOULD BE GOOD TO GET ACTIVE CASES
+### FOR ALL THE PROVINCES PER 10K PEOPLE (FROM THE PHAC DATA SOURCE - ALREADY LOADED)
+### AND TO ADD THE ALTERNATIVE BILAL AND NFLD TRAVEL-RELATED CASE DATA - I'M JUST NOT SURE
+### THAT THE NL NLCHI DATA SHOULD BE MADE PUBLIC - MAYBE CALL THAT FROM A LOCAL DIRECTORY
+### MAYBE CALL THESE: NL.travel.2 and NB.travel.2.
+#######
 
 
 # Weekly active cases in all provinces per 10K people
