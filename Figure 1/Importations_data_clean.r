@@ -8,11 +8,11 @@
 #======================
 
 library(dplyr)
+library(zoo)
 
 ## PULLING THE DATA FILES
 # This is to pull the data a copy of the PHAC data for active cases
 PHAC.data <- read.csv('https://raw.githubusercontent.com/ahurford/covid-nl/master/covid19-download.csv')
-# This adds the report week to the PHAC data so that it is consistent with CCODWG
 PHAC.data <- select(PHAC.data,date,numtoday,numactive,prname)%>%
   mutate(report_week = as.Date(cut(as.Date(date),"week", start.on.monday = F)))%>%
   distinct()
@@ -21,18 +21,12 @@ PHAC.data <- select(PHAC.data,date,numtoday,numactive,prname)%>%
 CCODWG.2020=read.csv('https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/retired_datasets/individual_level/cases_2020.csv', fill=TRUE)
 CCODWG.2021=read.csv('https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/retired_datasets/individual_level/cases_2021_1.csv', fill = TRUE)
 CCODWG.2021b=read.csv('https://raw.githubusercontent.com/ishaberry//Covid19Canada/master/retired_datasets/individual_level/cases_2021_2.csv', fill = TRUE)
-# These are data files obtained by the researchers
-# Append report week
-NL.travel.2 = read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL-travel.csv', fill=TRUE)%>%
-  mutate(report_week = as.Date(cut(as.Date(REPORTED_DATE),"week", start.on.monday = F)))%>%
-  distinct()
-NL.travel.2.daily = select(NL.travel.2, REPORTED_DATE, TRAVEL)
+date_report <- data.frame(date_report=as.Date(seq(from=as.Date("2020-06-15"), to =as.Date("2021-05-31"), by = "day")))
+
+# These are data files that will be used for validation
+NL.travel.2 = read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL-travel.csv', fill=TRUE)
 NB.travel.2 = read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NB-travel.csv', fill=TRUE)[,1:2]
 NB.travel.2$Date = format(as.Date(NB.travel.2$Date, format = "%m/%d/%y"),"%Y-%m-%d")
-NB.travel.2 = NB.travel.2%>%
-  mutate(report_week = as.Date(cut(as.Date(Date),"week", start.on.monday = F)))%>%
-  distinct()
-NB.travel.2.daily = select(NB.travel.2, Date, Travel.related.Cases)
 
 
 ## TRAVEL-RELATED CASES FROM CCODWG
@@ -50,7 +44,7 @@ CCODWG.2021$travel_history_country[CCODWG.2021$travel_history_country =="Not rep
 i = which(CCODWG.2021$travel_history_country =="Close contact")
 CCODWG.2021 = CCODWG.2021[-i,]
 
-# Atlantic Canada and territories specific data extraction
+# FOR ATLANTIC CANADA AND TERRITORIES TIME SERIES AGGREGATED BY WEEKS
 importations=function(province){
   travel.data.2020 <- CCODWG.2020[CCODWG.2020$province==province,]
   travel.data.2021 <- CCODWG.2021[CCODWG.2021$province==province,]
@@ -126,7 +120,61 @@ travel = full_join(NL.travel,NS.travel)%>%
   full_join(PEI.travel)%>%
   full_join(YT.travel)%>%
   full_join(NWT.travel)%>%
-  arrange(report_week)
+  arrange(report_week)%>%
+  filter(report_week>"2020-07-01"&report_week<"2021-05-30")%>%
+  as.data.frame()
+
+travel[is.na(travel)]=0
+travel.wk = travel
+
+# FOR MODELLING TRAVEL-RELATED CASES ARRIVING IN ATLANTIC CANADA
+importations2=function(province){
+  travel.data.2020 <- CCODWG.2020[CCODWG.2020$province==province,]
+  travel.data.2021 <- CCODWG.2021[CCODWG.2021$province==province,]
+  travel.data.2021b <- CCODWG.2021b[CCODWG.2021b$province==province,]
+  travel.data = rbind(travel.data.2020,travel.data.2021, travel.data.2021b)
+
+  # Only travel-related
+  travel = travel.data[travel.data$travel_yn==1 & travel.data$locally_acquired!="Close Contact",]
+  travel$date_report=format(as.Date(travel$date_report, format = "%d-%m-%Y"),"%Y-%m-%d")
+  
+  travel = select(travel,date_report)%>%
+    group_by(date_report)%>%
+    add_tally()%>%
+    rename("travel"="n")%>%
+    select(date_report,travel)%>%
+    distinct()%>%
+    as.data.frame()
+    travel$date_report=as.Date(travel$date_report)
+    # Add zeros were no travel-related cases are reported
+    travel = left_join(date_report,travel)
+    travel[is.na(travel)]=0
+    # 7-day rolling average of travel-related cases
+    av_7 = c(rep(NA,6),rollmean(travel$travel,7, align="right"))
+    travel = mutate(travel, av_7=av_7)
+}
+
+NL.travel = importations2("NL")%>%
+  rename("NL_travel"=travel)%>%
+  rename("NL_av_7"=av_7)
+
+NS.travel = importations2("Nova Scotia")%>%
+  rename("NS_travel"=travel)%>%
+  rename("NS_av_7"=av_7)
+
+NB.travel = importations2("New Brunswick")%>%
+  rename("NB_travel"=travel)%>%
+  rename("NB_av_7"=av_7)
+
+PEI.travel = importations2("PEI")%>%
+  rename("PEI_travel"=travel)%>%
+  rename("PEI_av_7"=av_7)
+
+travel = full_join(NL.travel,NS.travel)%>%
+  full_join(NB.travel)%>%
+  full_join(PEI.travel)%>%
+  arrange(date_report)%>%
+  filter(date_report>="2020-07-01")
 
 
 ## AV. WEEKLY ACTIVE CASES PER 10K PEOPLE FROM PHAC
@@ -144,71 +192,45 @@ SK.pop<-1178971
 AB.pop<-4431454
 BC.pop<-5163919
 
+
 active.fun = function(prov,pop){ 
   active = filter(PHAC.data, prname==prov)%>%
-  group_by(report_week)%>%
-  add_tally(numactive)%>%
-  mutate("av.active"=n/7)%>%
-  mutate("active.per.10K" = 1e4*av.active/pop)%>%
-  select(report_week,active.per.10K)%>%
-  distinct()
+  mutate("active.per.10K" = 1e4*numactive/pop)%>%
+  select(date,active.per.10K)%>%
+  distinct()%>%
+  arrange(date)
 }
 
-BC.active = active.fun("British Columbia", BC.pop)%>%
-  rename("BC.active"=active.per.10K)
-AB.active = active.fun("Alberta", AB.pop)%>%
-  rename("AB.active"=active.per.10K)
-SK.active = active.fun("Saskatchewan", SK.pop)%>%
-  rename("SK.active"=active.per.10K)
-MB.active = active.fun("Manitoba", MB.pop)%>%
-  rename("MB.active"=active.per.10K)
-ON.active = active.fun("Ontario", ON.pop)%>%
-  rename("ON.active"=active.per.10K)
-QC.active = active.fun("Quebec", QC.pop)%>%
-  rename("QC.active"=active.per.10K)
-NB.active = active.fun("New Brunswick", NB.pop)%>%
-  rename("NB.active"=active.per.10K)
-NS.active = active.fun("Nova Scotia", NS.pop)%>%
-  rename("NS.active"=active.per.10K)
+BC_active = active.fun("British Columbia", BC.pop)%>%
+  rename("BC_active"=active.per.10K)
+AB_active = active.fun("Alberta", AB.pop)%>%
+  rename("AB_active"=active.per.10K)
+SK_active = active.fun("Saskatchewan", SK.pop)%>%
+  rename("SK_active"=active.per.10K)
+MB_active = active.fun("Manitoba", MB.pop)%>%
+  rename("MB_active"=active.per.10K)
+ON_active = active.fun("Ontario", ON.pop)%>%
+  rename("ON_active"=active.per.10K)
+QC_active = active.fun("Quebec", QC.pop)%>%
+  rename("QC_active"=active.per.10K)
+NB_active = active.fun("New Brunswick", NB.pop)%>%
+  rename("NB_active"=active.per.10K)
+NS_active = active.fun("Nova Scotia", NS.pop)%>%
+  rename("NS_active"=active.per.10K)
 
-active = full_join(BC.active, AB.active)%>%
-  full_join(SK.active)%>%
-  full_join(MB.active)%>%
-  full_join(ON.active)%>%
-  full_join(QC.active)%>%
-  full_join(NB.active)%>%
-  full_join(NS.active)%>%
+active = full_join(BC_active, AB_active)%>%
+  full_join(SK_active)%>%
+  full_join(MB_active)%>%
+  full_join(ON_active)%>%
+  full_join(QC_active)%>%
+  full_join(NB_active)%>%
+  full_join(NS_active)%>%
   distinct()
 
+active$date=as.Date(active$date)
+travel = rename(travel,date=date_report)
+travel = left_join(travel,active)
 
-## TRAVEL-RELATED CASE DATA FROM EXTERNAL SOURCES
-NL.travel.2 = group_by(NL.travel.2,report_week)%>%
-  add_tally(TRAVEL)%>%
-  rename("NL.travel.2"="n")%>%
-  add_tally(CLOSE_CONTACT)%>%
-  rename("NL.contact.2"="n")%>%
-  select(report_week,NL.travel.2,NL.contact.2)%>%
-  distinct()
-
-NB.travel.2 = group_by(NB.travel.2,report_week)%>%
-  add_tally(Travel.related.Cases)%>%
-  rename("NB.travel.2"="n")%>%
-  select(report_week,NB.travel.2)%>%
-  distinct()
-
-travel = full_join(travel, NL.travel.2)%>%full_join(active)%>%
-  as.data.frame()
-# The NAs recreated are 0
-travel[is.na(travel)]=0
-
-# FOR NB.travel.2 only some NAs are 0 because NB.travel.2 does not cover the full time range
-travel = full_join(travel, NB.travel.2)%>%
-  arrange(report_week)
-
-# Constrain dates:
-# Few travel-related cases before July 5, 2020
-# No CCODWG data available after May 31, 2021
-travel = travel%>%filter(report_week>="2020-07-05" & report_week<="2021-05-30")
 
 ## MAKE THE VALIDATION DATASETS - Do not aggregate by week
 province = "NL"
@@ -241,18 +263,28 @@ CCODWG.NB = group_by(CCODWG.NB,date_report)%>%
   rename("CCODWG"=n)
 
 # Validation period starts Jan 1 2021
-NB.travel.2.daily=rename(NB.travel.2.daily, "date_report" = Date, "NB.govt" = Travel.related.Cases)
-NB.validation = left_join(NB.travel.2.daily, CCODWG.NB)%>%
+NB.travel.2=rename(NB.travel.2, "date_report" = Date, "NB.govt" = Travel.related.Cases)
+NB.validation = left_join(NB.travel.2, CCODWG.NB)%>%
   filter(date_report<"2021-06-01")%>% # Since CCODWG stops reporting after this.
   as.data.frame()
 
 # Validation period is the time covered for the CCOWGD  
-NL.travel.2.daily=rename(NL.travel.2.daily, "date_report" = REPORTED_DATE, "NLCHI" = TRAVEL)
-NL.validation = left_join(CCODWG.NL,NL.travel.2.daily)%>%
+NL.travel.2=rename(NL.travel.2, "date_report" = REPORTED_DATE, "NLCHI" = TRAVEL)%>%
+  select(date_report, NLCHI)
+NL.validation = left_join(CCODWG.NL,NL.travel.2)%>%
   as.data.frame()
 
+# (1) Data to make the graph of time series of travel-related cases, close contacts, and new cases, aggregated by week
+# for Atlantic Canada and the territories (except Nunavuat - no data)
+write.csv(travel.wk, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/travel_wk.csv")
 
+# (2) Data to model travel-related cases to Atlantic Canada (7-day moving average) predicted from active cases per 10K
+# in other Canadian provinces. No not include the validation datasets: NL.travel.2 and NB.travel.2 in this analysis
 write.csv(travel, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/travel.csv")
+
+# (3) Full data set of active cases per 10K which can be used for prediction outside the time range of the model described in (2) 
 write.csv(active, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/active.csv")
+
+# (4) Datasets to validate the number of travel-related cases reported in the CCODWG data
 write.csv(NL.validation, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL_validation.csv")
 write.csv(NB.validation, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NB_validation.csv")
