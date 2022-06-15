@@ -167,6 +167,9 @@ ns_plots <- function(active,travel , province_abb)
   
   }
 
+# run script by loading data
 active <- read.csv("active.csv")
 travel <- read.csv("travel.csv")
-ns_plots(active, travel,province_abb = 'NB')
+
+# enter the abbreviation for province of interest in upper cases eg. 'NB', 'NWT', 'PEI', 'NS', 'YT' & 'NL'
+ns_plots(active, travel, province_abb = 'NB')
