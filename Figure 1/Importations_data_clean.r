@@ -222,7 +222,8 @@ CCODWG.NL = data.frame(date_report=travel.data[travel.data$travel_yn==1 & travel
 CCODWG.NL = group_by(CCODWG.NL,date_report)%>%
   add_tally()%>%
   distinct()%>%
-  select(date_report,n)
+  select(date_report,n)%>%
+  rename("CCODWG"=n)
   
 
 province = "New Brunswick"
@@ -238,10 +239,20 @@ CCODWG.NB = group_by(CCODWG.NB,date_report)%>%
   distinct()%>%
   select(date_report,n)%>%
   rename("CCODWG"=n)
-NB.travel.2.daily=rename(NB.travel.2.daily, "date_report" = Date, "NB.govt" = Travel.related.Cases)
-NB.validation = left_join(NB.travel.2.daily, CCODWG.NB)
-NL.travel.2.daily=rename(NL.travel.2.daily, "date_report" = REPORTED_DATE, "NLCHI" = TRAVEL)
 
-# There is a problem with the NLHCI data that needs to be fixed
+# Validation period starts Jan 1 2021
+NB.travel.2.daily=rename(NB.travel.2.daily, "date_report" = Date, "NB.govt" = Travel.related.Cases)
+NB.validation = left_join(NB.travel.2.daily, CCODWG.NB)%>%
+  filter(date_report<"2021-06-01")%>% # Since CCODWG stops reporting after this.
+  as.data.frame()
+
+# Validation period is the time covered for the CCOWGD  
+NL.travel.2.daily=rename(NL.travel.2.daily, "date_report" = REPORTED_DATE, "NLCHI" = TRAVEL)
+NL.validation = left_join(CCODWG.NL,NL.travel.2.daily)%>%
+  as.data.frame()
+
+
 write.csv(travel, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/travel.csv")
 write.csv(active, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/active.csv")
+write.csv(NL.validation, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL_validation.csv")
+write.csv(NB.validation, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NB_validation.csv")
