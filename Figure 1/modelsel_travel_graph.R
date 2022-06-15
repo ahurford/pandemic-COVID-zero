@@ -132,7 +132,7 @@ ns_plots <- function(active,travel , province_abb)
   # -------------------------------------------------------------------------------------------
   
   # visualize the data frame by ploting the week against the total cases
-  ns_trav_graph <- ggplot(ns_df,aes(week,actual)) +
+  trav_graph <- ggplot(ns_df,aes(week,actual)) +
     geom_line(aes(y=predicted),color=cb[2]) +
     geom_point(aes(y=actual),color=cb[2]) +
     scale_x_date(breaks = date_breaks("1 month"),labels = date_format("%b %Y"))+
@@ -142,11 +142,11 @@ ns_plots <- function(active,travel , province_abb)
     theme_classic() + 
     theme(axis.text.x = element_text(angle = 90, size=rel(0.9)), legend.title = element_blank(),
           legend.text = element_text(size = rel(1)),plot.title = element_text(size = rel(.9)),axis.title = element_text(size = rel(.8)))
-  png("ns_travel.png")
-  print(ns_trav_graph)
+  png(paste(prov,"travel.png",sep = '_'))
+  print(trav_graph)
   dev.off()
   
-  ns_active_graph <- ggplot(data,aes(x=week,y = value,color = variable)) +
+  active_graph <- ggplot(data,aes(x=week,y = value,color = variable)) +
     geom_area(aes(fill = variable,alpha = variable),linetype = "blank") +
     geom_line(aes(y = value2),col="black")+
     geom_line(aes(y = value4),col="black",linetype="dashed")+
@@ -161,8 +161,8 @@ ns_plots <- function(active,travel , province_abb)
     theme_classic() + theme(legend.position = "none",axis.text.x = element_text(angle = 90, size=rel(0.9)), 
                             legend.title = element_blank(),legend.text=element_text(size=rel(1)),plot.title=element_text(size=rel(.9)))
   
-  png("ns_active.png")
-  print(ns_active_graph)
+  png(paste(prov,"active.png",sep = '_'))
+  print(active_graph)
   dev.off()
   
   }
