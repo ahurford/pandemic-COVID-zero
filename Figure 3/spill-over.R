@@ -57,7 +57,7 @@ gNL.tot =ggplot(data,aes(as.Date(date),group=1)) +
   geom_point(aes(y=validation.data),color=cb[2], cex = 1) +
   geom_point(aes(y=fitted.data), color = cb[2], pch=1, cex=1)+
   geom_line(aes(y=n),col = "black", lwd=1) +
-  geom_line(aes(y=av_7),color=cb[2], lwd=1)+
+  geom_line(aes(y=av_7),color="grey", lwd=1)+
   scale_x_date(breaks = date_breaks("1 month"),
                labels = date_format("%b %Y"))+
   xlab("") +
