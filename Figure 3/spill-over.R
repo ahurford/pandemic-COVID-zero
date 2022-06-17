@@ -15,23 +15,26 @@ cb = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
 ## Load the data & clean to minimum level with date and the time variable 
 # Travel-related cases arriving in NL, n (source: NLCHI data)
 n <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL-travel.csv')[,-1]%>%
-  rename(date=REPORTED_DATE)
-n <- data.frame(date=NL.travel$date, n = NL.travel$TRAVEL)%>%filter(date<"2021-12-25")
+  rename(date=REPORTED_DATE)%>%filter(date<"2021-12-25")
+# close contacts per traveller
+c = sum(n$CLOSE_CONTACT)/sum(n$TRAVEL)
+n <- data.frame(date=n$date, n = n$TRAVEL)
 n$date <- as.Date(n$date)
 
 # Vaccination data (source: PHAC)
 vaccination <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/vaccination-coverage-map.csv')%>%
   rename(date = week_end)
 vaccination$date = as.Date(vaccination$date)
+vaccination$proptotal_additional[is.na(vaccination$proptotal_additional)]=0
 vaccination$proptotal_fully = as.numeric(vaccination$proptotal_fully)
 vaccination <- mutate(vaccination, proptotal_fully = proptotal_fully/100)%>%
   mutate(proptotal_partially = proptotal_partially/100)%>%
   mutate(proptotal_additional = proptotal_additional/100)
 
 vaccination.Canada <- filter(vaccination,prename=="Canada")%>%
-  select(date, proptotal_partially, proptotal_fully, proptotal_additional)
+  dplyr::select(date, proptotal_partially, proptotal_fully, proptotal_additional)
 vaccination.NL <- filter(vaccination,prename=="Newfoundland and Labrador")%>%
-  select(date, proptotal_partially, proptotal_fully, proptotal_additional)
+  dplyr::select(date, proptotal_partially, proptotal_fully, proptotal_additional)
 
 
 
@@ -41,10 +44,10 @@ variant <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pa
 variant$date <- as.Date(variant$date, format = "%Y-%m-%d")
 
 variant.clean  = function(var){
-  variant%>%filter(X_Identifier==var)%>%select(date,fraction)%>%
+  variant%>%filter(X_Identifier==var)%>%dplyr::select(date,fraction)%>%
   group_by(date)%>%
   add_tally(fraction)%>%
-  select(date,n)%>%
+  dplyr::select(date,n)%>%
   distinct()%>%
   arrange(date)%>%
     rename(freq=n)%>%
@@ -69,32 +72,25 @@ data <- left_join(data, vaccination.Canada)
 
 vacc.interp = function(){
 # Linear interpolation for the vaccination data where NAs were created during the left_join
-data$proptotal_partially[1] = 0
 data$proptotal_partially = na_interpolation(data$proptotal_partially)
-data$proptotal_fully[1] = 0
 data$proptotal_fully = na_interpolation(data$proptotal_fully)
-data$proptotal_additional[1] = 0
-if(is.na(tail(data$proptotal_additional,1))){
-  data$proptotal_additional[length(data$proptotal_additional)]=0
-}
 data$proptotal_additional = na_interpolation(data$proptotal_additional)
-# Because additional doses are few and recently administered bundle with fully vaccinated:
-data$proptotal_fully = data$proptotal_fully+data$proptotal_additional
-# Remove additional doses column
-data = data%>%select(-proptotal_additional)
+# Exclude additional from full
+data$proptotal_fully = data$proptotal_fully- data$proptotal_additional
+return(data)
 }
 
 # Interpolate and clean-up the Canadian vaccination data
 data = vacc.interp()
 # Rename the Canadian vaccination data columns
-data = data %>% rename(CAN.partial = proptotal_partially, CAN.full = proptotal_fully)%>%
-  mutate(CAN.unvax = 1 - CAN.full - CAN.partial)
+data = data %>% rename(CAN.partial = proptotal_partially, CAN.full = proptotal_fully, CAN.additional = proptotal_additional)%>%
+  mutate(CAN.unvax = 1 - CAN.full - CAN.partial - CAN.additional)
 
 # Join the NL vaccination data:
 data <- left_join(data, vaccination.NL)
 # Perform the linear interpolation for the NL vaccination data:
-data = vacc.interp()%>% rename(NL.partial = proptotal_partially, NL.full = proptotal_fully)%>%
-  mutate(NL.unvax = 1 - NL.full - NL.partial)
+data = vacc.interp()%>% rename(NL.partial = proptotal_partially, NL.full = proptotal_fully, NL.additional = proptotal_additional)%>%
+  mutate(NL.unvax = 1 - NL.full - NL.partial - NL.additional)
 
 # Join the alpha variant
 data <- left_join(data,alpha)
@@ -111,7 +107,9 @@ data <- left_join(data,delta)
 data <- var.interp()%>%rename(delta = freq)
 # Join the omicron variant
 data <- left_join(data,omicron)
-data <- var.interp()%>%rename(omicron = freq)
+data <- var.interp()%>%rename(omicron = freq)%>%
+  mutate(original = round(1- omicron - delta-alpha,2))
+# rounding is to remove -ve numbers
 
 g.var =ggplot(data,aes(as.Date(date),group=1)) +
   geom_ribbon(aes(ymax=1, ymin=alpha+delta+omicron), fill="grey", alpha=0.3)+
@@ -132,9 +130,11 @@ g.var =ggplot(data,aes(as.Date(date),group=1)) +
 
 g.vax =ggplot(data,aes(as.Date(date),group=1)) +
   geom_ribbon(aes(ymax=1, ymin=1-CAN.unvax), fill="grey", alpha=0.3)+
-  geom_ribbon(aes(ymax = CAN.full+CAN.partial, ymin=CAN.partial), fill=palette.colors(2)[2], alpha=.5)+
+  geom_ribbon(aes(ymax = CAN.full+CAN.partial+CAN.additional, ymin=CAN.partial+CAN.full), fill="dodgerblue", alpha=.5)+
+  geom_ribbon(aes(ymax = CAN.partial+CAN.full, ymin=CAN.partial), fill=palette.colors(2)[2], alpha=.5)+
   geom_ribbon(aes(ymax = CAN.partial, ymin=0), fill="darkorchid", alpha=.5)+
-  geom_line(aes(y=NL.full+NL.partial), col=palette.colors(2)[2])+
+  geom_line(aes(y=NL.full+NL.partial+NL.additional), col="green")+
+  geom_line(aes(y=NL.partial+NL.full), col=palette.colors(2)[2])+
   geom_line(aes(y=NL.partial), col="darkorchid")+
   scale_x_date(breaks = date_breaks("1 month"),
                labels = date_format("%b %Y"))+
@@ -145,50 +145,80 @@ g.vax =ggplot(data,aes(as.Date(date),group=1)) +
   annotate("text", x = as.Date("2021-11-01"), y = .6, label = "Full", fontface=2)+
   annotate("text", x = as.Date("2021-05-25"), y = .1, label = "Partial", fontface=2)+
   annotate("text", x = as.Date("2020-10-01"), y = .75, label = "Unvaccinated", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-12-24"), y = .75, label = "+1", col = "black", fontface=2)+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
 
 g.var/g.vax
 
-# Timeline of measures
-# Variant transmissibility factors
+###-------
+# Vaccine efficacies and calculating, T_j,k
+# There are teh Pfizer values
+# https://www.nejm.org/doi/full/10.1056/NEJMoa2119451 (Omicron values, 2-does 25+ weeks)
+VE = data.frame(original = c(0, .492, .934, .934), alpha = c(0, .492, .934, .934), delta = c(0, .332, 0.879, 0.879), omicron = c(0, 0, 0.088, 0.672))
+T.original = data.frame(unvax = data$CAN.unvax*VE$original[1], partial = data$CAN.partial*VE$original[2], full = data$CAN.full*VE$original[3], additional = data$CAN.additional*VE$original[4])*data$original
+T.alpha = data.frame(unvax = data$CAN.unvax*VE$alpha[1], partial = data$CAN.partial*VE$alpha[2], full = data$CAN.full*VE$alpha[3], additional = data$CAN.additional*VE$alpha[4])*data$alpha
+T.delta = data.frame(unvax = data$CAN.unvax*VE$delta[1], partial = data$CAN.partial*VE$delta[2], full = data$CAN.full*VE$delta[3], additional = data$CAN.additional*VE$delta[4])*data$delta
+T.omicron = data.frame(unvax = data$CAN.unvax*VE$omicron[1], partial = data$CAN.partial*VE$omicron[2], full = data$CAN.full*VE$omicron[3], additional = data$CAN.additional*VE$omicron[4])*data$omicron
+
+# Normalize by dividing by the sum of the row sums:
+T.sum = rowSums(T.original)+rowSums(T.alpha) + rowSums(T.delta) + rowSums(T.omicron)
+T.original = T.original/T.sum
+T.alpha = T.alpha/T.sum
+T.delta = T.delta/T.sum
+T.omicron = T.omicron/T.sum
+
+## Maskwearing by anyone in the NL community (including travellers)
+# It is assumed that mandatory masking reduces transmission by 50%
+# Masking recommended reduces transmission by 25%
+
 # No mask prior to Aug 24, 2020
-masks <- rep(1,T)
+L=length(data$date)
+masks <- rep(1,L)
 # Mandatory masks August 24, 2020 to August 10, 2021
-masks[55:T] <- 0.5
-# Masks recommended
-masks[406:T] <- 0.75
-# Mandatory Sept 18, 2021-
-masks[445:T] <- 0.5
+i = which(data$date=="2020-08-24")
+masks[i:L] <- 0.5
+# Masks recommended become recommended on August 10, 2021
+i = which(data$date =="2021-08-10")
+masks[i:L] <- 0.75
+# Maks are mandatory Sept 18, 2021 to beyond the end date
+i = which(data$date=="2021-09-18")
+masks[i:L] <- 0.5
 
-In February 2021, NL experienced a community outbreak of [alpha variant](link). During the entire period that the alpha variant was common, travellers were required to self-isolate for 14 days in NL, and few NLers were vaccinated. From our modelling above, we estimate 316 travel-related cases and close contacts of travellers infected with the alpha variant, one of which resulted in a community outbreak in Mt. Pearl. Therefore, we estimate the efficacy of 14-day isolation, for a traveller infected with the alpha variant, when no one in the NL community is vaccinated as $s_\alpha^0 = 1/316$.
+## Estiamte number of travellers when the alpha variant occurred
+alpha.travellers = sum(data$n*data$alpha)
 
-Generally, it is difficult to estimate the efficacy of self-isolation but our calculation above is based on NL data. Next, we use this estimated value of $s_\alpha^0 = 1/316$ make assumes to estimate similar probabilities given different variants, vaccination rates, and restrictions applied to travellers. 
+## Consideration of vaccination in the NL community (no additional doses during study period)
+NL.original = data$NL.unvax*VE$original[1] + data$NL.partial*VE$original[2] + data$NL.full*VE$original[3]
+NL.alpha = data$NL.unvax*VE$alpha[1] + data$NL.partial*VE$alpha[2] + data$NL.full*VE$alpha[3]
+NL.delta = data$NL.unvax*VE$delta[1] + data$NL.partial*VE$delta[2] + data$NL.full*VE$delta[3]
+NL.omicron = data$NL.unvax*VE$omicron[1] + data$NL.partial*VE$omicron[2] + data$NL.full*VE$omicron[3]
 
-Assuming the delta variant is 50% more transmissible than alpha, and alpha is 50% more transmissible than the original variant, we estimate $s_\delta^0 = 1/211$ and $s_0^0 = 1/474$ (where the superscript 0 indicates that no NLers are vaccinated).  If $x = [x_0, x_1, x_2]$ is the frequency of NLers that are unvaccinated, vaccinated with 1 dose, or vaccinated with 2 doses, then the probability of a community case given that a traveller is infected with a particular variant and is required to self-isolate for 14 days is:
+## Self-isolation until negative test
+# Another restriction that has been applied to travellers into NL is self-isolation until a negative test result.
+# We assume this corresponds to 1-day of self-isolation, a test on day 0 of entering the province, and that days
+# since exposure of arriving travellers are uniformly distributed from 0 to 10 days.  We assume that infectivity
+# as a function of days since exposure follows a Weibull distribution with a shape parameter of 2.83 and a scale
+# parameter of 5.67 (Ferretti/Hurford et al. 2021). After 1 day of self-isolation, the distribution of days since
+# exposure is uniform from 1 to 11 days, however, since infectivity zero days from exposure is small, the Weibull
+# distribution suggests that 1 day of self-isolation does not appreciably reduce the risk of infection spread to
+# the community, relative to no self-isolation. The probability of a true positive when days since exposure is
+# uniformly distribution from 0 to 10 is the mean of $t$, where $t_i$ is the probability of testing positive
+# given infection $i$ days ago:
   
-  $s^0 = s_0^0(x_0 + 0.5x_1 + 0.06x_2)$
-  
-  $s^\alpha = s_\alpha^0(x_0 + 0.5x_1 + 0.06x_2)$
-  
-  $s^\delta = s_\delta^0(x_0 + 0.94x_1 + 0.12x_2)$
-  
-  where the breakthrough rates for the original and alpha variants are assumed to be the same: 50% for partially vaccinated individuals and 6% for fully vaccinated individuals. For the delta variant, we assume a 64% breakthrough rate for partially vaccinated individuals and a 12% breakthrough rate for fully vaccinated individuals.
+t.sens = c(0,.19,.39,.58,.77,.73,.68,.64,.59,.55,.5)
+    
+# (reference). As such, the probability that an infected traveller is released into the community given
+# self-isolation until a negative test result is estimated as $0.49$.
 
-### Self-isolation until negative test
-Another restriction that has been applied to travellers into NL is self-isolation until a negative test result. We assume this corresponds to 1-day of self-isolation, a test on day 0 of entering the province, and that days since exposure of arriving travellers are uniformly distributed from 0 to 10 days.  We assume that infectivity as a function of days since exposure follows a Weibull distribution with a shape parameter of 2.83 and a scale parameter of 5.67 (Ferretti/Hurford et al. 2021). After 1 day of self-isolation, the distribution of days since exposure is uniform from 1 to 11 days, however, since infectivity zero days from exposure is small, the Weibull distribution suggests that 1 day of self-isolation does not appreciably reduce the risk of infection spread to the community, relative to no self-isolation. The probability of a true positive when days since exposure is uniformly distribution from 0 to 10 is the mean of $t$, where $t_i$ is the probability of testing positive given infection $i$ days ago:
-  
-  \[
-    t = [0,.19,.39,.58,.77,.73,.68,.64,.59,.55,.5]
-    \]
-(reference). As such, the probability that an infected traveller is released into the community given self-isolation until a negative test result is estimated as $0.49$.
 
-```{r,echo=FALSE,results=FALSE}
 dweibull(seq(0,10), 2.83, scale = 5.67, log = FALSE)
 sum(dweibull(seq(1,11), 2.83, scale = 5.67, log = FALSE))
 sum(dweibull(seq(8,18), 2.83, scale = 5.67, log = FALSE))
 sum(dweibull(seq(6,16), 2.83, scale = 5.67, log = FALSE))
 1-mean(c(.59,.55,.5))
-```
+
+#######3--------- I am up to here!
+
 
 ### Testing on day 7, 8, or 9 and self-isolation until negative test
 Another restriction is a test on day 7, 8, or 9 and isolation until a negative test result. We assume the test occurs on day 8 and the traveller exits self-isolation on day 9, if negative. By day 8, many travellers are no longer infective as some were several days post-exposure on arrival. More precisely, and as implied by the Weibull distribution assumption, after 8 days of self-isolation 11% of infectivity remains. When the test occurs on day 8, the probability of a false negative test is estimated as 0.45. Therefore, the probability that infectious travellers are released into the community given day 7-9 testing and self-isolation until a negative test result is $0.45s^v/0.89$. The requirement of testing more than offsets the reduced duration of self-isolation, such that the probability an infected traveller is released into the community with testing on day 8 is less than that of 14-day self-isolation, $s^v$.
