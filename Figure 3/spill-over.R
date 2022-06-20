@@ -148,13 +148,11 @@ g.vax =ggplot(data,aes(as.Date(date),group=1)) +
   annotate("text", x = as.Date("2021-12-24"), y = .75, label = "+1", col = "black", fontface=2)+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
 
-g.var/g.vax
-
 ###-------
 # Vaccine efficacies and calculating, T_j,k
 # There are teh Pfizer values
 # https://www.nejm.org/doi/full/10.1056/NEJMoa2119451 (Omicron values, 2-does 25+ weeks)
-VE = data.frame(original = c(0, .492, .934, .934), alpha = c(0, .492, .934, .934), delta = c(0, .332, 0.879, 0.879), omicron = c(0, 0, 0.088, 0.672))
+VE = data.frame(original = c(0, .49, .93, .93), alpha = c(0, .49, .93, .93), delta = c(0, .33, 0.88, 0.88), omicron = c(0, 0, 0.09, 0.67))
 T.original = data.frame(unvax = data$CAN.unvax*VE$original[1], partial = data$CAN.partial*VE$original[2], full = data$CAN.full*VE$original[3], additional = data$CAN.additional*VE$original[4])*data$original
 T.alpha = data.frame(unvax = data$CAN.unvax*VE$alpha[1], partial = data$CAN.partial*VE$alpha[2], full = data$CAN.full*VE$alpha[3], additional = data$CAN.additional*VE$alpha[4])*data$alpha
 T.delta = data.frame(unvax = data$CAN.unvax*VE$delta[1], partial = data$CAN.partial*VE$delta[2], full = data$CAN.full*VE$delta[3], additional = data$CAN.additional*VE$delta[4])*data$delta
@@ -198,91 +196,308 @@ NL.omicron = data$NL.unvax*VE$omicron[1] + data$NL.partial*VE$omicron[2] + data$
 # We assume this corresponds to 1-day of self-isolation, a test on day 0 of entering the province, and that days
 # since exposure of arriving travellers are uniformly distributed from 0 to 10 days.  We assume that infectivity
 # as a function of days since exposure follows a Weibull distribution with a shape parameter of 2.83 and a scale
-# parameter of 5.67 (Ferretti/Hurford et al. 2021). After 1 day of self-isolation, the distribution of days since
-# exposure is uniform from 1 to 11 days, however, since infectivity zero days from exposure is small, the Weibull
-# distribution suggests that 1 day of self-isolation does not appreciably reduce the risk of infection spread to
-# the community, relative to no self-isolation. The probability of a true positive when days since exposure is
+# parameter of 5.67 (Ferretti et al. 2020). After 1 day of self-isolation, the distribution of days since
+# exposure is uniform from 1 to 11 days. Summing the Weibull distribution evaluated for these days since exposure
+# gives the exposure to the community.
+
+# A restriction is a test on day 7, 8, or 9 and isolation until a negative test result. We assume the test
+# occurs on day 8 and the traveller exits self-isolation on day 9, if negative. By day 8, many travellers
+# are no longer infective as some were several days post-exposure on arrival. More precisely, and as implied
+# by the Weibull distribution assumption, after 8 days of self-isolation 11% of infectivity remains.
+# When the test occurs on day 8, the probability of a false negative test is estimated as 0.45.
+# Therefore, the probability that infectious travellers are released into the community given day
+# 7-9 testing and self-isolation until a negative test result is 0.45x0.89x(variant and mask effects)
+# The requirement of testing more than offsets the reduced duration of self-isolation, such that
+# the probability an infected traveller is released into the community with testing on day 8 is
+# less than that of 14-day self-isolation.
+
+# Infectivity on each day:
+#dweibull(seq(0,10), 2.83, scale = 5.67, log = FALSE)
+
+# Infectivity in community if isolating for 1-day - distribution of days since infection shifts by 1-day.
+iso.0 = sum(dweibull(seq(1,11), 2.83, scale = 5.67, log = FALSE))
+iso.7 = sum(dweibull(seq(8,18), 2.83, scale = 5.67, log = FALSE))
+iso.5 = sum(dweibull(seq(6,16), 2.83, scale = 5.67, log = FALSE))
+
+# The probability of a true positive when days since exposure is
 # uniformly distribution from 0 to 10 is the mean of $t$, where $t_i$ is the probability of testing positive
 # given infection $i$ days ago:
   
 t.sens = c(0,.19,.39,.58,.77,.73,.68,.64,.59,.55,.5)
     
-# (reference). As such, the probability that an infected traveller is released into the community given
-# self-isolation until a negative test result is estimated as $0.49$.
+# The probability that an infected traveller is released into the community given
+# self-isolation until a negative test result on arrival is estimated as $0.49$.
 
+1-mean(t.sens)
 
-dweibull(seq(0,10), 2.83, scale = 5.67, log = FALSE)
-sum(dweibull(seq(1,11), 2.83, scale = 5.67, log = FALSE))
-sum(dweibull(seq(8,18), 2.83, scale = 5.67, log = FALSE))
-sum(dweibull(seq(6,16), 2.83, scale = 5.67, log = FALSE))
-1-mean(c(.59,.55,.5))
-
-#######3--------- I am up to here!
-
-
-### Testing on day 7, 8, or 9 and self-isolation until negative test
-Another restriction is a test on day 7, 8, or 9 and isolation until a negative test result. We assume the test occurs on day 8 and the traveller exits self-isolation on day 9, if negative. By day 8, many travellers are no longer infective as some were several days post-exposure on arrival. More precisely, and as implied by the Weibull distribution assumption, after 8 days of self-isolation 11% of infectivity remains. When the test occurs on day 8, the probability of a false negative test is estimated as 0.45. Therefore, the probability that infectious travellers are released into the community given day 7-9 testing and self-isolation until a negative test result is $0.45s^v/0.89$. The requirement of testing more than offsets the reduced duration of self-isolation, such that the probability an infected traveller is released into the community with testing on day 8 is less than that of 14-day self-isolation, $s^v$.
-
-Restrictions apply to travellers with given vaccination statuses. We calculate the vaccination status, and infecting variant, of a traveller given that they are infected as:
-  
-  $t_j^i = \frac{x_jv_iz_{i,j}}{T} \ \ \mbox{where} \ \ T = x_0 + x_1(0.5(v_0 + v_\alpha) + 0.64v_\delta) + x_2(0.06(v_0 + v_\alpha) + 0.88v_\delta)$
-  
-  such that $v_i$ is the frequency of variant $i$, $x_j$ is the fraction of travellers with vaccination status $j$, and $z_{i,j}$ is the breakthrough rate of the variant $i$ for individuals with vaccination status $j =1$ or $2$, or it is the increased transmissibility of the alpha and delta variants in unvaccinated individuals, $j=0$.
-
-```{r, echo=FALSE, message = FALSE, warning=FALSE}
-alpha.trans <- alpha.trans*masks
-OV.trans <- OV.trans*masks
-delta.trans <- delta.trans*masks
-omicron.trans <-omicron.trans*masks
+# Transmissibility advantange of variants
+omicron.trans = 1
+delta.trans = omicron.trans/3.3
+alpha.trans =delta.trans/1.5
+original.trans = alpha.trans/1.5
 
 ## Restrictions for unvaccinated travellers
-m.unvax.0 <- rep(1/316/1.5, T)
-m.unvax.a <- rep(1/316, T)
-m.unvax.d <- rep(1.5/316,T)
-m.unvax.o <- rep((1.5*1.2)/316,T)
+m.unvax.original <- rep(1/alpha.travellers/1.5, L)
+m.unvax.alpha <- rep(1/alpha.travellers, L)
+m.unvax.delta <- rep(1.5/1/alpha.travellers,L)
+m.unvax.omicron <- rep((3.3*1.5)/1/alpha.travellers,L)
 
 # on August 1, test on day 8 + isolation to negative for unvaccinated
-m.unvax.0[397:T] <- (0.45*m.unvax.0[397:T]/0.89)*OV.trans
-m.unvax.a[397:T] <- (0.45*m.unvax.a[397:T]/0.89)*alpha.trans
-m.unvax.d[397:T] <- (0.45*m.unvax.d[397:T]/0.89)*delta.trans
-m.unvax.o[397:T] <- (0.45*m.unvax.o[397:T]/0.89)*omicron.trans
+i = which(data$date=="2021-08-01")
+m.unvax.original[i:L] <- (0.45*m.unvax.original[i:L]/0.89)*original.trans
+m.unvax.alpha[i:L] <- (0.45*m.unvax.alpha[i:L]/0.89)*alpha.trans
+m.unvax.delta[i:L] <- (0.45*m.unvax.delta[i:L]/0.89)*delta.trans
+m.unvax.omicron[i:L] <- (0.45*m.unvax.omicron[i:L]/0.89)*omicron.trans
 
 ## Restrictions for travellers with 1 dose
 # Same restrictions prior re-opening
-m.1.0 <- m.unvax.0
-m.1.a <- m.unvax.a
-m.1.d <- m.unvax.d
-m.1.o <- m.unvax.o
+m.1.original <- m.unvax.original
+m.1.alpha <- m.unvax.alpha
+m.1.delta <- m.unvax.delta
+m.1.omicron <- m.unvax.omicron
 
 # July 1 - negative test step 1
-m.1.0[366:T] <- 0.49*OV.trans
-m.1.a[366:T] <- 0.49*alpha.trans
-m.1.d[366:T] <- 0.49*delta.trans
-m.1.o[366:T] <- 0.49*omicron.trans
+i = which(data$date=="2021-07-01")
+m.1.original[i:L] <- 0.49*original.trans
+m.1.alpha[i:L] <- 0.49*alpha.trans
+m.1.delta[i:L] <- 0.49*delta.trans
+m.1.omicron[i:L] <- 0.49*omicron.trans
 
 # August 1 - no measures
-m.1.0[397:T] <- OV.trans
-m.1.a[397:T] <- alpha.trans
-m.1.d[397:T] <- delta.trans
-m.1.o[397:T] <- omicron.trans
+i = which(data$date=="2021-08-01")
+m.1.original[i:L] <- original.trans
+m.1.alpha[i:L] <- alpha.trans
+m.1.delta[i:L] <- delta.trans
+m.1.omicron[i:L] <- omicron.trans
 # Sept 30 - same as unvaccinated
-m.1.0[457:T] <- m.unvax.0[457:T]
-m.1.a[457:T] <- m.unvax.a[457:T]
-m.1.d[457:T] <- m.unvax.d[457:T]
-m.1.o[457:T] <- m.unvax.o[457:T]
+i = which(data$date=="2021-09-30")
+m.1.original[i:L] <- m.unvax.original[i:L]
+m.1.alpha[i:L] <- m.unvax.alpha[i:L]
+m.1.delta[i:L] <- m.unvax.delta[i:L]
+m.1.omicron[i:L] <- m.unvax.omicron[i:L]
 
-## Two dose travellers
+## Two dose travellers (same as 3-dose also)
 # Same restrictions as other travellers prior to reopening
-m.2.0 <- m.unvax.0
-m.2.a <- m.unvax.a
-m.2.d <- m.unvax.d
-m.2.o <- m.unvax.o
+m.2.original <- m.unvax.original
+m.2.alpha <- m.unvax.alpha
+m.2.delta <- m.unvax.delta
+m.2.omicron <- m.unvax.omicron
 
 # No requirements after July 1.
-m.2.0[366:T] <- OV.trans
-m.2.a[366:T] <- alpha.trans
-m.2.d[366:T] <- delta.trans
-m.2.o[366:T] <- omicron.trans
+i = which(data$date=="2021-07-01")
+m.2.original[i:L] <- original.trans
+m.2.alpha[i:L] <- alpha.trans
+m.2.delta[i:L] <- delta.trans
+m.2.omicron[i:L] <- omicron.trans
 
-# Dec 18 5 RAT for arriving travllers (536) efficacy 0.07
-# Dec 22 self-isolation of travellers (540) efficacy 0.4
+# Dec 21: 5 RAT and isolate for 5 days.
+# Since the study ends on Dec 24, the only impact
+# is due to self-isolation
+i = which(data$date=="2021-12-21")
+iso.1 = sum(dweibull(seq(1,11), 2.83, scale = 5.67, log = FALSE))
+iso.2 = sum(dweibull(seq(2,12), 2.83, scale = 5.67, log = FALSE))
+iso.3 = sum(dweibull(seq(3,13), 2.83, scale = 5.67, log = FALSE))
+iso.4 = sum(dweibull(seq(4,14), 2.83, scale = 5.67, log = FALSE))
+m.2.original[i:L] <- original.trans*iso.1
+m.2.alpha[i:L] <- alpha.trans*iso.1
+m.2.delta[i:L] <- delta.trans*iso.1
+m.2.omicron[i:L] <- omicron.trans*iso.1
+
+m.2.original[(i+1):L] <- original.trans*iso.2
+m.2.alpha[(i+1):L] <- alpha.trans*iso.2
+m.2.delta[(i+1):L] <- delta.trans*iso.2
+m.2.omicron[(i+1):L] <- omicron.trans*iso.2
+
+m.2.original[(i+2):L] <- original.trans*iso.3
+m.2.alpha[(i+2):L] <- alpha.trans*iso.3
+m.2.delta[(i+2):L] <- delta.trans*iso.3
+m.2.omicron[(i+2):L] <- omicron.trans*iso.3
+
+m.2.original[(i+3):L] <- original.trans*iso.4
+m.2.alpha[(i+3):L] <- alpha.trans*iso.4
+m.2.delta[(i+3):L] <- delta.trans*iso.4
+m.2.omicron[(i+3):L] <- omicron.trans*iso.4
+
+# Vulnerability of the NL community to different variants
+NL.original = data$NL.unvax*masks*(1-VE$original[1]) + data$NL.partial*(1-VE$original[2]) + data$NL.full*(1-VE$original[3]) + data$NL.additional*(1-VE$original[4])
+NL.alpha = data$NL.unvax*masks*(1-VE$alpha[1]) + data$NL.partial*(1-VE$alpha[2]) + data$NL.full*(1-VE$alpha[3]) + data$NL.additional*(1-VE$alpha[4])
+NL.delta = data$NL.unvax*masks*(1-VE$delta[1]) + data$NL.partial*(1-VE$delta[2]) + data$NL.full*(1-VE$delta[3]) + data$NL.additional*(1-VE$delta[4])
+NL.omicron = data$NL.unvax*masks*(1-VE$omicron[1]) + data$NL.partial*(1-VE$omicron[2]) + data$NL.full*(1-VE$omicron[3]) + data$NL.additional*(1-VE$omicron[4])
+
+# Spillover prob from a traveller that is infected with a given variant (and vax status)
+p.original = data.frame(date = data$date,unvax=m.unvax.original*NL.original, partial=m.1.original*NL.original, full =m.2.original*NL.original, additional = m.2.original*NL.original)%>%
+  mutate(total = unvax+partial+full+additional)
+p.alpha = data.frame(date = data$date,unvax = m.unvax.alpha*NL.alpha, partial = m.1.alpha*NL.alpha, full = m.2.alpha*NL.alpha, additional = m.2.alpha*NL.alpha)%>%
+  mutate(total = unvax+partial+full+additional)
+p.delta = data.frame(date = data$date, unvax = m.unvax.delta*NL.delta, partial = m.1.delta*NL.delta, full = m.2.delta*NL.delta, additional = m.2.delta*NL.delta)%>%
+  mutate(total = unvax+partial+full+additional)
+p.omicron = data.frame(date = data$date,unvax = m.unvax.omicron*NL.omicron, partial = m.1.omicron*NL.omicron, full = m.2.omicron*NL.omicron, additional = m.2.omicron*NL.omicron)%>%
+  mutate(total = unvax+partial+full+additional)
+
+g.original =ggplot(p.original,aes(as.Date(date),group=1)) +
+  geom_line(aes(y = full), col=palette.colors(2)[2])+
+  geom_line(aes(y = partial), col="darkorchid")+
+  geom_line(aes(y = unvax), col="grey")+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+  xlab("") +
+  ylab("probability")+
+  ggtitle("Original variant")+
+  #coord_cartesian(ylim=c(0, 25))+
+  annotate("text", x = as.Date("2021-12-01"), y = .025, label = "Full", fontface=2, col = palette.colors(2)[2])+
+  annotate("text", x = as.Date("2021-11-01"), y = .01, label = "Partial", fontface=2, col ="darkorchid")+
+  annotate("text", x = as.Date("2021-03-10"), y = .006, label = "Unvaccinated", col = "grey", fontface=2)+
+  #annotate("text", x = as.Date("2021-12-24"), y = .75, label = "+1", col = "black", fontface=2)+
+  theme_classic() + theme(axis.title.x=element_blank(),
+                          axis.text.x=element_blank(),
+                          axis.ticks.x=element_blank(), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+
+g.omicron =ggplot(p.omicron,aes(as.Date(date),group=1)) +
+  geom_line(aes(y = additional), col="dodgerblue")+
+  geom_line(aes(y = full), col=palette.colors(2)[2])+
+  geom_line(aes(y = partial), col="darkorchid")+
+  geom_line(aes(y = unvax), col="grey")+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+  xlab("") +
+  ylab("probability")+
+  ggtitle("Omicron variant")+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+
+g.alpha =ggplot(p.alpha,aes(as.Date(date),group=1)) +
+  geom_line(aes(y = additional), col="dodgerblue")+
+  geom_line(aes(y = full), col=palette.colors(2)[2])+
+  geom_line(aes(y = partial), col="darkorchid")+
+  geom_line(aes(y = unvax), col="grey")+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+  xlab("") +
+  ylab("probability")+
+  ggtitle("Alpha variant")+
+  theme_classic() + theme(axis.title.x=element_blank(),
+                          axis.text.x=element_blank(),
+                          axis.ticks.x=element_blank(), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+
+g.delta =ggplot(p.delta,aes(as.Date(date),group=1)) +
+  geom_line(aes(y = additional), col="dodgerblue")+
+  geom_line(aes(y = full), col=palette.colors(2)[2])+
+  geom_line(aes(y = partial), col="darkorchid")+
+  geom_line(aes(y = unvax), col="grey")+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+  xlab("") +
+  ylab("probability")+
+  ggtitle("Delta variant")+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+
+
+# Expected number of travellers with a given variant (and vax status)
+n.original = data.frame(date = data$date, unvax = T.original$unvax*data$n, partial = T.original$partial*data$n, full = T.original$full*data$n, additional = T.original$additional*data$n)%>%
+  mutate(total = unvax+partial+full+additional)
+n.alpha = data.frame(date = data$date, unvax = T.alpha$unvax*data$n, partial = T.alpha$partial*data$n, full = T.alpha$full*data$n, additional = T.alpha$additional*data$n)%>%
+  mutate(total = unvax+partial+full+additional)
+n.delta = data.frame(date = data$date, unvax = T.delta$unvax*data$n, partial = T.delta$partial*data$n, full = T.delta$full*data$n, additional = T.delta$additional*data$n)%>%
+  mutate(total = unvax+partial+full+additional)
+n.omicron = data.frame(date = data$date, unvax = T.omicron$unvax*data$n, partial = T.omicron$partial*data$n, full = T.omicron$full*data$n, additional = T.omicron$additional*data$n)%>%
+  mutate(total = unvax+partial+full+additional)
+
+# Expected probability of at least one infection from each variant
+p1.original = 1 - (1-p.original$unvax)^n.original$unvax*(1-p.original$partial)^n.original$partial*(1-p.original$full)^n.original$full*(1-p.original$additional)^n.original$additional
+p1.alpha = 1 - (1-p.alpha$unvax)^n.alpha$unvax*(1-p.alpha$partial)^n.alpha$partial*(1-p.alpha$full)^n.alpha$full*(1-p.alpha$additional)^n.alpha$additional
+p1.delta = 1 - (1-p.delta$unvax)^n.delta$unvax*(1-p.delta$partial)^n.delta$partial*(1-p.delta$full)^n.delta$full*(1-p.delta$additional)^n.delta$additional
+p1.omicron = 1 - (1-p.omicron$unvax)^n.omicron$unvax*(1-p.omicron$partial)^n.omicron$partial*(1-p.omicron$full)^n.omicron$full*(1-p.omicron$additional)^n.omicron$additional
+p1.total = 1-(1-p1.original)*(1-p1.alpha)*(1-p1.delta)*(1-p1.omicron)
+
+p1 = data.frame(date = data$date, original = p1.original, alpha = p1.alpha, delta = p1.delta, omicron = p1.omicron, total=p1.total)
+p1$original = c(p1$original[1:6], rollmean(p1$original,7))
+p1$alpha = c(p1$alpha[1:6], rollmean(p1$alpha,7))
+p1$delta = c(p1$delta[1:6], rollmean(p1$delta,7))
+p1$omicron = c(p1$omicron[1:6], rollmean(p1$omicron,7))
+p1$total = c(p1$total[1:6], rollmean(p1$total,7))
+
+#Expected spillovers
+E.original = p.original$unvax*n.original$unvax + p.original$partial*n.original$partial + p.original$full*n.original$full + p.original$additional*n.original$additional
+E.alpha = p.alpha$unvax*n.alpha$unvax + p.alpha$partial*n.alpha$partial + p.alpha$full*n.alpha$full + p.alpha$additional*n.alpha$additional
+E.delta = p.delta$unvax*n.delta$unvax + p.delta$partial*n.delta$partial + p.delta$full*n.delta$full + p.delta$additional*n.delta$additional
+E.omicron = p.omicron$unvax*n.omicron$unvax + p.omicron$partial*n.omicron$partial + p.omicron$full*n.omicron$full + p.omicron$additional*n.omicron$additional
+
+# Take rolling mean
+E.original = c(E.original[1:6], rollmean(E.original, 7))
+E.alpha = c(E.alpha[1:6], rollmean(E.alpha, 7))
+E.delta = c(E.delta[1:6], rollmean(E.delta, 7))
+E.omicron = c(E.omicron[1:6], rollmean(E.omicron, 7))
+
+E.spillovers = data.frame(date = data$date, original = E.original, alpha = E.alpha, delta = E.delta, omicron = E.omicron)
+
+g.spillovers =ggplot(E.spillovers,aes(as.Date(date),group=1)) +
+  geom_ribbon(aes(ymax = alpha+delta+omicron+original, ymin=alpha+delta+original), fill=palette.colors(7)[7], alpha=.8)+
+  geom_ribbon(aes(ymax = alpha+delta+original, ymin=alpha+original), fill=palette.colors(3)[3], alpha=.8)+
+  geom_ribbon(aes(ymax = alpha+original, ymin=original), fill=palette.colors(4)[4], alpha=.8)+
+  geom_ribbon(aes(ymax = original, ymin=0), fill="grey", alpha=.8)+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"))+
+  xlab("") +
+  ylab("Expected number per day (7-day rolling mean)")+
+  ggtitle("Spillovers")+
+  #coord_cartesian(ylim=c(0, .5))+
+  annotate("text", x = as.Date("2021-12-10"), y = .9, label = "BA.1", fontface=2)+
+  annotate("text", x = as.Date("2021-09-01"), y = .6, label = "Delta", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-04-07"), y = .25, label = "Alpha", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2020-09-01"), y = .75, label = "Original", col = "black", fontface=2)+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+
+g1 = ggplot(p1,aes(as.Date(date),group=1))+
+  geom_line(aes(y=total), col = "black")+
+  geom_line(aes(y=omicron), col=palette.colors(7)[7])+
+  geom_line(aes(y=delta), col=palette.colors(3)[3])+
+  geom_line(aes(y = alpha), col=palette.colors(4)[4])+
+  geom_line(aes(y = original), col="grey")+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+  xlab("") +
+  ylab("Expected number per day (7-day rolling mean)")+
+  ggtitle("Probability of at least one spillover")+
+  annotate("text", x = as.Date("2021-12-10"), y = .9, label = "BA.1", fontface=2)+
+  annotate("text", x = as.Date("2021-09-01"), y = .6, label = "Delta", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-04-07"), y = .25, label = "Alpha", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2020-09-01"), y = .75, label = "Original", col = "black", fontface=2)+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+
+  
+
+n.variant = data.frame(date = data$date, original = n.original$total, alpha = n.alpha$total, delta = n.delta$total, omicron = n.omicron$total)
+n.variant$original = c(n.variant$original[1:6], rollmean(n.variant$original, 7))
+n.variant$alpha = c(n.variant$alpha[1:6], rollmean(n.variant$alpha, 7))
+n.variant$delta = c(n.variant$delta[1:6], rollmean(n.variant$delta, 7))
+n.variant$omicron = c(n.variant$omicron[1:6], rollmean(n.variant$omicron, 7))
+
+p.variant = data.frame(date = data$date, original = p.original$total, alpha = p.alpha$total, delta = p.delta$total, omicron = p.omicron$total)
+p.variant$original = c(p.variant$original[1:6], rollmean(p.variant$original, 7))
+p.variant$alpha = c(p.variant$alpha[1:6], rollmean(p.variant$alpha, 7))
+p.variant$delta = c(p.variant$delta[1:6], rollmean(p.variant$delta, 7))
+p.variant$omicron = c(p.variant$omicron[1:6], rollmean(p.variant$omicron, 7))
+
+
+g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
+  geom_ribbon(aes(ymax = alpha+delta+omicron+original, ymin=alpha+delta+original), fill=palette.colors(7)[7], alpha=.8)+
+  geom_ribbon(aes(ymax = alpha+delta+original, ymin=alpha+original), fill=palette.colors(3)[3], alpha=.8)+
+  geom_ribbon(aes(ymax = alpha+original, ymin=original), fill=palette.colors(4)[4], alpha=.8)+
+  geom_ribbon(aes(ymax = original, ymin=0), fill="grey", alpha=.8)+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"))+
+  #scale_y_continuous(trans='log2')+
+  xlab("") +
+  ylab("Expected number per day (7-day rolling mean)")+
+  ggtitle("Travel-related cases")+
+  #coord_cartesian(ylim=c(0, .5))+
+  annotate("text", x = as.Date("2021-12-10"), y = .9, label = "BA.1", fontface=2)+
+  annotate("text", x = as.Date("2021-09-01"), y = .6, label = "Delta", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-04-07"), y = .25, label = "Alpha", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2020-09-01"), y = .75, label = "Original", col = "black", fontface=2)+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+
+g.n
+g.spillovers
+(g.original+g.alpha)/(g.delta+g.omicron)
+g.var/g.vax
+g1
