@@ -537,6 +537,7 @@ g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
 g.omicron2 = g.omicron+
   ggtitle("Per traveller - Omicron")+
   theme(axis.title = element_text(size=rel(1)))+
+  ylab("Probability of a \ncommunity infection")+
   scale_x_date(breaks = date_breaks("2 month"),
                labels = date_format("%b %Y"))+
   annotate("text", x = as.Date("2021-10-10"), y = .5, label = "1", col = "darkorchid", fontface=2)+

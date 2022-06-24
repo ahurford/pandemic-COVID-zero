@@ -28,7 +28,7 @@ NS = active$NS_active
 AB = active$AB_active
 n = data.frame(date = active$date, n = exp(c.ON*ON + c.AB*AB + c.NS*NS))
 
-obs.data = select(NL.travel, date,TRAVEL)
+obs.data = dplyr::select(NL.travel, date,TRAVEL)
 # To get the date where there were 0 travel-related cases in the data
 obs.data = left_join(n,obs.data)%>%
   as.data.frame()%>%

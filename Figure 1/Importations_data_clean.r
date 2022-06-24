@@ -13,7 +13,7 @@ library(zoo)
 ## PULLING THE DATA FILES
 # This is to pull the data a copy of the PHAC data for active cases
 PHAC.data <- read.csv('https://raw.githubusercontent.com/ahurford/covid-nl/master/covid19-download.csv')
-PHAC.data <- select(PHAC.data,date,numtoday,numactive,prname)%>%
+PHAC.data <- dplyr::select(PHAC.data,date,numtoday,numactive,prname)%>%
   mutate(report_week = as.Date(cut(as.Date(date),"week", start.on.monday = F)))%>%
   distinct()
 ## These datasets are inidividual-level from the COVID-19 Canada Open data working group. They give travel-related
@@ -54,20 +54,20 @@ importations=function(province){
   travel.data$report_week = format(as.Date(travel.data$report_week, format = "%d-%m-%Y"),"%Y-%m-%d")
   # Only travel-related
   travel = travel.data[travel.data$travel_yn==1 & travel.data$locally_acquired!="Close Contact",]
-  travel = select(travel,date_report,report_week,travel_yn,locally_acquired)%>%
+  travel = dplyr::select(travel,date_report,report_week,travel_yn,locally_acquired)%>%
     group_by(report_week)%>%
     add_tally()%>%
     rename("travel"="n")%>%
-    select(report_week,travel)%>%
+    dplyr::select(report_week,travel)%>%
     distinct()
   travel$report_week=as.Date(travel$report_week)
   # Close contacts only
   contacts = travel.data[travel.data$travel_yn!=1 & travel.data$locally_acquired=="Close Contact",]
-  contacts = select(contacts,date_report,report_week,travel_yn,locally_acquired)%>%
+  contacts = dplyr::select(contacts,date_report,report_week,travel_yn,locally_acquired)%>%
     group_by(report_week)%>%
     add_tally()%>%
     rename("contacts"="n")%>%
-    select(report_week,contacts)%>%
+    dplyr::select(report_week,contacts)%>%
     distinct()
   contacts$report_week=as.Date(contacts$report_week)
   # Travel and close contact:There is no data of this type - all close contacts are coded as not travel-related.
@@ -86,7 +86,7 @@ importations=function(province){
     group_by(report_week)%>%
     add_tally(numtoday)%>%
     rename("new_cases"="n")%>%
-    select(report_week,new_cases)%>%
+    dplyr::select(report_week,new_cases)%>%
     distinct()
   data=full_join(travel,contacts)%>%full_join(data)
 }
@@ -138,11 +138,11 @@ importations2=function(province){
   travel = travel.data[travel.data$travel_yn==1 & travel.data$locally_acquired!="Close Contact",]
   travel$date_report=format(as.Date(travel$date_report, format = "%d-%m-%Y"),"%Y-%m-%d")
   
-  travel = select(travel,date_report)%>%
+  travel = dplyr::select(travel,date_report)%>%
     group_by(date_report)%>%
     add_tally()%>%
     rename("travel"="n")%>%
-    select(date_report,travel)%>%
+    dplyr::select(date_report,travel)%>%
     distinct()%>%
     as.data.frame()
     travel$date_report=as.Date(travel$date_report)
@@ -196,7 +196,7 @@ BC.pop<-5163919
 active.fun = function(prov,pop){ 
   active = filter(PHAC.data, prname==prov)%>%
   mutate("active.per.10K" = 1e4*numactive/pop)%>%
-  select(date,active.per.10K)%>%
+  dplyr::select(date,active.per.10K)%>%
   distinct()%>%
   arrange(date)
 }
@@ -244,7 +244,7 @@ CCODWG.NL = data.frame(date_report=travel.data[travel.data$travel_yn==1 & travel
 CCODWG.NL = group_by(CCODWG.NL,date_report)%>%
   add_tally()%>%
   distinct()%>%
-  select(date_report,n)%>%
+  dplyr::select(date_report,n)%>%
   rename("CCODWG"=n)
   
 
@@ -259,7 +259,7 @@ CCODWG.NB = data.frame(date_report=travel.data[travel.data$travel_yn==1 & travel
 CCODWG.NB = group_by(CCODWG.NB,date_report)%>%
   add_tally()%>%
   distinct()%>%
-  select(date_report,n)%>%
+  dplyr::select(date_report,n)%>%
   rename("CCODWG"=n)
 
 # Validation period starts Jan 1 2021
@@ -270,7 +270,7 @@ NB.validation = left_join(NB.travel.2, CCODWG.NB)%>%
 
 # Validation period is the time covered for the CCOWGD  
 NL.travel.2=rename(NL.travel.2, "date_report" = REPORTED_DATE, "NLCHI" = TRAVEL)%>%
-  select(date_report, NLCHI)
+  dplyr::select(date_report, NLCHI)
 NL.validation = left_join(CCODWG.NL,NL.travel.2)%>%
   as.data.frame()
 
