@@ -50,7 +50,10 @@ model_plots <- function(travel , prov)
       }
     
     features = colnames(df_features)
+    
     ###--------import python file---------###
+    # import python script to create a power set of all the unique combinations of provinces 
+    # to use as predictors in our model
     source_python("permute_variables.py")
     permuted_variables <- variable_permutations(feature_list = features)
     # exclude the empty list
