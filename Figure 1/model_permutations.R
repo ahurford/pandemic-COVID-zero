@@ -48,7 +48,9 @@ model_plots <- function(travel , prov)
         df_features <- df[,colnames(df)]
         sel_features <- colnames(df_features)
       }
-    
+    # ---------------- First Model Fitting For Best Praire ------------------------------------
+    # fit models for only 'AB', 'MB', 'SK' and select the province with the least AIC
+    # -------------------------------------------------------------------------------------------
     aiclist <- c()
     for (i in 1 : ncol(df_features))
       {
@@ -65,8 +67,10 @@ model_plots <- function(travel , prov)
     print(paste0('The province to use as praire with the least AIC is: ',praire))
     print('')
     
-    praire_best_predictor <- df_features[,praire]
-    
+    # -------------------------------------------------------------------------------------------
+    # subset data frame to include only "ON", "QC", "NB", "BC" and praire. Replace NB with NS
+    # and maintain NS for the rest of the provinces as predicitor
+    # -------------------------------------------------------------------------------------------
     if (prov == 'NS')
       {
         df_features <- subset(df_features, select = c("ON", "QC", "NB", "BC", praire))
@@ -75,14 +79,17 @@ model_plots <- function(travel , prov)
       {
         df_features <- subset(df_features, select = c("ON", "QC", "NS", "BC", praire))
       }
-    
+    # get names of the predictors to be used in the model
     features = colnames(df_features)
-    ###--------import python file---------###
+  
+    # -------------------------------------------------------------------------------------------
+    # import python file by using the reticulate package to run in r
+    # -------------------------------------------------------------------------------------------
     source_python("permute_variables.py")
     permuted_variables <- variable_permutations(feature_list = features)
     # exclude the empty list
     permuted_variables <- permuted_variables[-1]
-    ###-----------------------------------###
+    # -------------------------------------------------------------------------------------------
     
     # -------------------------------------------------------------------------------------------
     # we fit multiple generalized linear models (glms) with poisson error distribution using total 
@@ -103,6 +110,8 @@ model_plots <- function(travel , prov)
     # ---------------- First Model Fitting For Best Predictor ------------------------------------
     # fit models for only 'AB', 'MB', 'SK' and select the province with the least AIC
     # -------------------------------------------------------------------------------------------
+    
+    # create empty list to store aic values
     global_aic_list <- c()
     
     for (predictors in permuted_variables)
@@ -169,14 +178,20 @@ model_plots <- function(travel , prov)
           }
       }
     
-    # province associated with the minimum aic
+    # -------------------------------------------------------------------------------------------
+    # province associated with the overall minimum aic for all models
+    # -------------------------------------------------------------------------------------------
     best_prov_combination <- names(global_aic_list)[which.min(global_aic_list)]
     print(paste0('The best province combination is ',best_prov_combination,' with AIC value of: ',global_aic_list[which.min(global_aic_list)]))
     print('')
-    
+    # -------------------------------------------------------------------------------------------
+
     # split the chosen predictors into a list
     chosen_predictors <- as.list(strsplit(best_prov_combination, "_")[[1]])
     
+    # -------------------------------------------------------------------------------------------
+    # Build GLM models for the respective list of permuted predictors
+    # -------------------------------------------------------------------------------------------
     # build final model from chosen best predictors 
     if (length(chosen_predictors) == 1)
       { 
