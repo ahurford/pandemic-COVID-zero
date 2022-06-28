@@ -6,7 +6,7 @@ library(gtools)
 library(sets)
 library(reticulate)
 sys <- import('sys',convert=TRUE);
-
+cb =c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
 
 model_plots <- function(travel , prov)
   {
@@ -39,7 +39,7 @@ model_plots <- function(travel , prov)
       }
     
     if (prov %in% colnames(df))
-      {
+      { 
         sel_features <- colnames(df)[! colnames(df) %in% c(prov)]
         df_features <- df[,sel_features]
       }
@@ -49,12 +49,36 @@ model_plots <- function(travel , prov)
         sel_features <- colnames(df_features)
       }
     
-    features = colnames(df_features)
+    aiclist <- c()
+    for (i in 1 : ncol(df_features))
+      {
+        var_name <- colnames(df_features)[i]
+        if (var_name %in% c('AB', 'MB', 'SK'))
+          {
+            mod <- glm(response ~ 0 + df_features[,var_name], family = "poisson")
+            print(paste0( 'Model AIC For ', var_name,': ',  mod$aic))
+            aiclist[[var_name]] <- mod$aic
+          }
+      }
+    # province associated with the minimum aic
+    praire <- names(aiclist)[which.min(aiclist)]
+    print(paste0('The province to use as praire with the least AIC is: ',praire))
+    print('')
     
+    praire_best_predictor <- df_features[,praire]
+    
+    if (prov == 'NS')
+      {
+        df_features <- subset(df_features, select = c("ON", "QC", "NB", "BC", praire))
+      }
+    else 
+      {
+        df_features <- subset(df_features, select = c("ON", "QC", "NS", "BC", praire))
+      }
+    
+    features = colnames(df_features)
     ###--------import python file---------###
-    # import python script to create a power set of all the unique combinations of provinces 
-    # to use as predictors in our model
-    source_python("~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/Figure 1/permute_variables.py")
+    source_python("permute_variables.py")
     permuted_variables <- variable_permutations(feature_list = features)
     # exclude the empty list
     permuted_variables <- permuted_variables[-1]
@@ -73,7 +97,7 @@ model_plots <- function(travel , prov)
     # as a predictor and combined with remaining provinces to build 
     # -------------------------------------------------------------------------------------------
     print(replicate(11,paste0('---')))
-    print(paste0('Building Total of ',length(permuted_variables), ' GLM For ',prov, ' Travel-Related Cases'))
+    print(paste0('Buiulding Total of ',length(permuted_variables), ' GLM For ',prov, ' Travel-Related Cases'))
     print(replicate(11,paste0('---')))
     print('')
     # ---------------- First Model Fitting For Best Predictor ------------------------------------
@@ -348,7 +372,48 @@ model_plots <- function(travel , prov)
     print(trav_graph)
     dev.off()
     
+    roll_avg <- df %>%
+      dplyr::mutate(avg_trav_07da = zoo::rollmean(true_values, k = 7, fill = NA)) %>%
+      dplyr::ungroup()
+    
+    if (prov == 'NL')
+      {
+        avg_color <- 'orange'
+      }
+    else if (prov == 'NS')
+      {
+        avg_color <- 'blue'
+      }
+    else if (prov == 'NB')
+      {
+        avg_color <- 'black'
+      }
+    else 
+      {
+        avg_color <- 'gold2'
+      }
+    roll_avg_plot <- ggplot(roll_avg,aes(x= date)) +
+      geom_point(aes(y = avg_trav_07da),color = avg_color) +
+      geom_line(aes(y = predictions),color='brown') +
+      # geom_line(aes(x = date, y = ns_trav_07da),color=cb[2]) +
+      scale_x_date(breaks = date_breaks("1 month"),date_labels = "%b")+
+      xlab("") +
+      ylab("")+
+      ggtitle(prov)+
+      theme_classic() + 
+      theme(axis.text.x = element_text(angle = 90, size=rel(0.9)), 
+            legend.title = element_blank(),
+            legend.text=element_text(size=rel(1)),
+            plot.title=element_text(size=rel(.9)),
+            axis.title = element_text(size=rel(.8)))
+    png(paste(prov,"avg_07_travel.png",sep = '_'))
+    print(roll_avg_plot)
+    dev.off()
   }
 
-active <- read.csv("/Users/ahurford/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/Data/travel.csv")
-model_plots(active,prov = 'NL')
+active <- read.csv("travel.csv")
+atlantic_provinces <- c('NL','NS','NB','PEI')
+for (prv in 1 : length(atlantic_provinces) )
+  {
+    model_plots(active,prov = atlantic_provinces[prv])
+  }
