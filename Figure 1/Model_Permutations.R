@@ -54,7 +54,7 @@ model_plots <- function(travel , prov)
     ###--------import python file---------###
     # import python script to create a power set of all the unique combinations of provinces 
     # to use as predictors in our model
-    source_python("permute_variables.py")
+    source_python("~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/Figure 1/permute_variables.py")
     permuted_variables <- variable_permutations(feature_list = features)
     # exclude the empty list
     permuted_variables <- permuted_variables[-1]
@@ -73,7 +73,7 @@ model_plots <- function(travel , prov)
     # as a predictor and combined with remaining provinces to build 
     # -------------------------------------------------------------------------------------------
     print(replicate(11,paste0('---')))
-    print(paste0('Buiulding Total of ',length(permuted_variables), ' GLM For ',prov, ' Travel-Related Cases'))
+    print(paste0('Building Total of ',length(permuted_variables), ' GLM For ',prov, ' Travel-Related Cases'))
     print(replicate(11,paste0('---')))
     print('')
     # ---------------- First Model Fitting For Best Predictor ------------------------------------
@@ -350,5 +350,5 @@ model_plots <- function(travel , prov)
     
   }
 
-active <- read.csv("travel.csv")
-model_plots(active,prov = 'NS')
+active <- read.csv("/Users/ahurford/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/Data/travel.csv")
+model_plots(active,prov = 'NL')
