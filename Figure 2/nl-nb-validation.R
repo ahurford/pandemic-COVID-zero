@@ -1,5 +1,3 @@
-# Figure 2: Probability of at least one community infection each week for Newfoundland and Labrador until Dec 15, 2022.
-
 library(ggplot2)
 library(scales)
 library(zoo)
@@ -7,10 +5,8 @@ library(bbmle)
 library(dplyr)
 cb = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
 # Travel-related cases arriving in NL
-NL.travel <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL-travel.csv')[,-1]%>%
-  rename(date=REPORTED_DATE)
-active <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/active.csv')[,-1]%>%
-  filter(date>="2020-07-01" & date<"2021-12-25")
+NL.travel <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL_validation.csv')[-1]
+NB.travel <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NB_validation.csv')[,-1]
 CCODWG = read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/travel.csv')[,-1]
 
 NL_travel = CCODWG$NL_travel
