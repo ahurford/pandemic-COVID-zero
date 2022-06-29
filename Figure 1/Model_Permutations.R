@@ -5,6 +5,7 @@ library(patchwork)
 library(gtools)
 library(sets)
 library(reticulate)
+library(zetadiv)
 sys <- import('sys',convert=TRUE);
 cb =c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
 
@@ -30,7 +31,10 @@ model_plots <- function(travel , prov)
       {
         resp_name <- paste(prov,"travel",sep = '_')
         response = travel[,resp_name]
+        print(replicate(12,paste0('###')))
         print(paste0('You are working with ', prov, ' Travel-Related Cases As Response Variable !!!'))
+        print(replicate(12,paste0('###')))
+        print('')
       }
     else
       {
@@ -55,7 +59,7 @@ model_plots <- function(travel , prov)
         var_name <- colnames(df_features)[i]
         if (var_name %in% c('AB', 'MB', 'SK'))
           {
-            mod <- glm(response ~ 0 + df_features[,var_name], family = "poisson")
+            mod <- glm.cons(response ~ 0 + df_features[,var_name], family = "poisson",method="glm.fit.cons", cons = 1)
             print(paste0( 'Model AIC For ', var_name,': ',  mod$aic))
             aiclist[[var_name]] <- mod$aic
           }
@@ -85,20 +89,23 @@ model_plots <- function(travel , prov)
     ###-----------------------------------###
     
     # -------------------------------------------------------------------------------------------
-    # we fit multiple generalized linear models (glms) with poisson error distribution using total 
-    # number of travel-related cases as the response variable and total active cases across 
-    # provinces as predictor(s)
+    # We fit multiple constrained generalized linear models (glm.cons) with poisson error distribution 
+    # using total number of travel-related cases for the provinces in Atlantic Canada as response 
+    # varaibles ie NL, NB, PEI and NS. We use the total active cases of 5 provinces in Canada ie ON, QC, 
+    # BC and one of AB, MB and SK and either of NB and NS as the predictor variables.
+    
+    # Fitted model coeffi
     
     # The Akaike information criterion (AIC) is an estimator of out-of-sample prediction error. 
     # It is used often when we are unable to test the model’s performance on a test set 
     # as practiced in standard machine learning task.
     
-    # The province associated with the best performing model in terms of least AIC value is chosen
-    # as a predictor and combined with remaining provinces to build 
+    # The province associated with the best performing model in terms of least AIC value among AB, MB 
+    # and SK is chosen and combined with remaining provinces ie ON, QC and BC to the build model
     # -------------------------------------------------------------------------------------------
-    print(replicate(11,paste0('---')))
-    print(paste0('Buiulding Total of ',length(permuted_variables), ' GLM For ',prov, ' Travel-Related Cases'))
-    print(replicate(11,paste0('---')))
+    # print(replicate(11,paste0('---')))
+    print(paste0('Buiulding Total of ',length(permuted_variables), ' glm.cons For ',prov, ' Travel-Related Cases'))
+    # print(replicate(11,paste0('---')))
     print('')
     # ---------------- First Model Fitting For Best Predictor ------------------------------------
     # fit models for only 'AB', 'MB', 'SK' and select the province with the least AIC
@@ -109,7 +116,7 @@ model_plots <- function(travel , prov)
       {
         if (length(predictors) == 1)
           { 
-            mod <- glm(response ~ 0 + df_features[,predictors[1]], family = "poisson")
+            mod <- glm.cons(response ~ 0 + df_features[,predictors[1]], family = "poisson", method="glm.fit.cons", cons = 1)
             print(paste0( 'Model AIC For ', predictors,': ',  mod$aic))
             global_aic_list[[predictors]] <- mod$aic
             print('')
@@ -117,7 +124,7 @@ model_plots <- function(travel , prov)
       
         else if ( length(predictors) == 2)
           { 
-            mod <- glm(response ~ 0 + df_features[,predictors[1]] + df_features[,predictors[2]], family = "poisson")
+            mod <- glm.cons(response ~ 0 + df_features[,predictors[1]] + df_features[,predictors[2]], family = "poisson",method="glm.fit.cons", cons = 1)
             print(paste0( 'Model AIC For ', predictors[1], ' & ', predictors[2],': ',  mod$aic))
             global_aic_list[[paste(predictors[1], predictors[2],sep = '_')]] <- mod$aic
             print('')
@@ -125,7 +132,8 @@ model_plots <- function(travel , prov)
             
         else if ( length(predictors) == 3)
           { 
-            mod <- glm(response ~ 0 + df_features[,predictors[1]] + df_features[,predictors[2]] + df_features[,predictors[3]], family = "poisson")
+            mod <- glm.cons(response ~ 0 + df_features[,predictors[1]] + df_features[,predictors[2]] + df_features[,predictors[3]], 
+                            family = "poisson",method="glm.fit.cons", cons = 1)
             print(paste0( 'Model AIC For ', predictors[1],' ,', predictors[2] ,' & ', predictors[3],': ',  mod$aic))
             global_aic_list[[paste(predictors[1], predictors[2],predictors[3],sep = '_')]] <- mod$aic
             print('')
@@ -133,16 +141,17 @@ model_plots <- function(travel , prov)
         
         else if (length(predictors) == 4)
           { 
-            mod <- glm(response ~ 0 + df_features[,predictors[1]] + df_features[,predictors[2]] + 
-                         df_features[,predictors[3]] + df_features[,predictors[4]], family = "poisson")
+            mod <- glm.cons(response ~ 0 + df_features[,predictors[1]] + df_features[,predictors[2]] + 
+                         df_features[,predictors[3]] + df_features[,predictors[4]], family = "poisson",method="glm.fit.cons", cons = 1)
             print(paste0( 'Model AIC For ', predictors[1],' ,', predictors[2] ,' ,', predictors[3],' & ', predictors[4],': ',  mod$aic))
             global_aic_list[[paste(predictors[1], predictors[2],predictors[3],predictors[4],sep = '_')]] <- mod$aic
             print('')
           }    
         else if (length(predictors) == 5)
           { 
-            mod <- glm(response ~ 0 + df_features[,predictors[1]] + df_features[,predictors[2]] + 
-                         df_features[,predictors[3]] + df_features[,predictors[4]] + df_features[,predictors[5]], family = "poisson")
+            mod <- glm.cons(response ~ 0 + df_features[,predictors[1]] + df_features[,predictors[2]] + 
+                         df_features[,predictors[3]] + df_features[,predictors[4]] + df_features[,predictors[5]], 
+                       family = "poisson",method="glm.fit.cons", cons = 1)
             print(paste0( 'Model AIC For ', predictors[1],' ,', predictors[2] ,' ,', predictors[3],' ,', predictors[4],' & ', predictors[5],': ',  mod$aic))
             global_aic_list[[paste(predictors[1], predictors[2],predictors[3],predictors[4],predictors[5],sep = '_')]] <- mod$aic
             print('')
@@ -150,9 +159,9 @@ model_plots <- function(travel , prov)
       
         else if (length(predictors) == 6)
           { 
-            mod <- glm(response ~ 0 + df_features[,predictors[1]] + 
+            mod <- glm.cons(response ~ 0 + df_features[,predictors[1]] + 
                          df_features[,predictors[2]] + df_features[,predictors[3]] + df_features[,predictors[4]] + 
-                         df_features[,predictors[5]] + df_features[,predictors[6]], family = "poisson")
+                         df_features[,predictors[5]] + df_features[,predictors[6]], family = "poisson",method="glm.fit.cons", cons = 1)
             print(paste0( 'Model AIC For ', predictors[1],' ,', predictors[[2]] ,' ,', predictors[[3]],' ,', predictors[[4]],' ,', predictors[[5]],' & ', predictors[[6]],': ',  mod$aic))
             global_aic_list[[paste(predictors[1], predictors[2],predictors[3],predictors[4],predictors[5],predictors[6],sep = '_')]] <- mod$aic
             print('')
@@ -160,9 +169,9 @@ model_plots <- function(travel , prov)
       
         else
           {
-            mod <- glm(response ~ 0 + df_features[,predictors[1]] + df_features[,predictors[2]] + 
+            mod <- glm.cons(response ~ 0 + df_features[,predictors[1]] + df_features[,predictors[2]] + 
                          df_features[,predictors[3]] + df_features[,predictors[4]] + df_features[,predictors[5]] + 
-                         df_features[,predictors[6]] + df_features[,predictors[7]], family = "poisson")
+                         df_features[,predictors[6]] + df_features[,predictors[7]], family = "poisson",method="glm.fit.cons", cons = 1)
             print(paste0( 'Model AIC For ', predictors[1],' ,', predictors[2] ,' ,', predictors[3],' ,', predictors[4],' ,', predictors[5],' ,', predictors[6],' & ', predictors[7],': ',  mod$aic))
             global_aic_list[[paste(predictors[1], predictors[2],predictors[3],predictors[4],predictors[5],predictors[6],predictors[7],sep = '_')]] <- mod$aic
             print('')
@@ -181,14 +190,15 @@ model_plots <- function(travel , prov)
     if (length(chosen_predictors) == 1)
       { 
         print(paste0( 'Building Final Model With ', length(chosen_predictors),' predictor.'))
-        best_mod <- glm(response ~ 0 + df_features[,chosen_predictors[[1]]], family = "poisson")
-        
+        best_mod <- glm.cons(response ~ 0 + df_features[,chosen_predictors[[1]]], family = "poisson", method="glm.fit.cons", cons = 1)
         # rename model output to bear variable names
         names(best_mod$coefficients) <- c(chosen_predictors[[1]])
-        # select only significant variables
-        signif_vars <- summary(best_mod)$coef[summary(best_mod)$coef[,4] <= .05, 1]
-        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',length(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
+        best_model_output <- as.data.frame(summary(best_mod)$coef)
+        # select only non-negative significant variables
+        signif_vars <- best_model_output[best_model_output[,'Pr(>|z|)'] <= .05]
+        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',nrow(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
         print(signif_vars)
+        print('')
         
         coef_predictor_1 <- coef(best_mod)[1]
         
@@ -200,14 +210,17 @@ model_plots <- function(travel , prov)
     else if (length(chosen_predictors) == 2)
       { 
         print(paste0( 'Building Final Model With ', length(chosen_predictors),' predictors'))
-        best_mod <- glm(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]], family = "poisson")
+        best_mod <- glm.cons(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]], 
+                             family = "poisson", method="glm.fit.cons", cons = 1)
         
         # rename model output to bear variable names
         names(best_mod$coefficients) <- c(chosen_predictors[[1]],chosen_predictors[[2]])
-        # select only significant variables
-        signif_vars <- summary(best_mod)$coef[summary(best_mod)$coef[,4] <= .05, 1]
-        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',length(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
+        best_model_output <- as.data.frame(summary(best_mod)$coef)
+        # select only non-negative significant variables
+        signif_vars <- best_model_output[best_model_output[,'Pr(>|z|)'] <= .05]
+        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',nrow(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
         print(signif_vars)
+        print('')
         
         # extract coefficients
         coef_predictor_1 <- coef(best_mod)[1]
@@ -221,15 +234,18 @@ model_plots <- function(travel , prov)
     else if (length(chosen_predictors) == 3)
       { 
         print(paste0( 'Building Final Model With ', length(chosen_predictors),' predictors'))
-        best_mod <- glm(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]] + 
-                          df_features[,chosen_predictors[[3]]], family = "poisson")
+        best_mod <- glm.cons(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]] + 
+                          df_features[,chosen_predictors[[3]]], family = "poisson")#, method="glm.fit.cons", cons = 1)
         
         # rename model output to bear variable names
         names(best_mod$coefficients) <- c(chosen_predictors[[1]],chosen_predictors[[2]],chosen_predictors[[3]])
-        # select only significant variables
-        signif_vars <- summary(best_mod)$coef[summary(best_mod)$coef[,4] <= .05, 1]
-        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',length(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
+        best_model_output <- as.data.frame(summary(best_mod)$coef)
+        # select only non-negative significant variables
+        signif_vars <- best_model_output[best_model_output[,'Pr(>|z|)'] <= .05]
+        
+        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',nrow(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
         print(signif_vars) 
+        print('')
         
         # extract coefficients
         coef_predictor_1 <- coef(best_mod)[1]
@@ -245,15 +261,19 @@ model_plots <- function(travel , prov)
     else if (length(chosen_predictors) == 4)
       {     
         print(paste0( 'Building Final Model With ', length(chosen_predictors),' predictors'))
-        best_mod <- glm(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]] + 
-                          df_features[,chosen_predictors[[3]]] + df_features[,chosen_predictors[[4]]], family = "poisson")
+        best_mod <- glm.cons(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]] + 
+                          df_features[,chosen_predictors[[3]]] + df_features[,chosen_predictors[[4]]], 
+                        family = "poisson")#,method="glm.fit.cons", cons = 1)
         
         # rename model output to bear variable names
         names(best_mod$coefficients) <- c(chosen_predictors[[1]],chosen_predictors[[2]],chosen_predictors[[3]],chosen_predictors[[4]])
-        # select only significant variables
-        signif_vars <- summary(best_mod)$coef[summary(best_mod)$coef[,4] <= .05, 1]
-        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',length(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
+        best_model_output <- as.data.frame(summary(best_mod)$coef)
+        # select only non-negative significant variables
+        signif_vars <- best_model_output[best_model_output[,'Pr(>|z|)'] <= .05]
+        
+        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',nrow(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
         print(signif_vars) 
+        print('')
         
         # extract coefficients
         coef_predictor_1 <- coef(best_mod)[1]
@@ -270,15 +290,19 @@ model_plots <- function(travel , prov)
     else if (length(chosen_predictors) == 5)
       { 
         print(paste0( 'Building Final Model With ', length(chosen_predictors),' predictors'))
-        best_mod <- glm(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]] + 
-                          df_features[,chosen_predictors[[3]]] + df_features[,chosen_predictors[[4]]] + df_features[,chosen_predictors[[5]]], family = "poisson")
+        best_mod <- glm.cons(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]] + 
+                          df_features[,chosen_predictors[[3]]] + df_features[,chosen_predictors[[4]]] + 
+                          df_features[,chosen_predictors[[5]]], family = "poisson")#, method="glm.fit.cons", cons = 1)
         
         # rename model output to bear variable names
         names(best_mod$coefficients) <- c(chosen_predictors[[1]],chosen_predictors[[2]],chosen_predictors[[3]],chosen_predictors[[4]],chosen_predictors[[5]])
-        # select only significant variables
-        signif_vars <- summary(best_mod)$coef[summary(best_mod)$coef[,4] <= .05, 1]
-        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',length(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
+        best_model_output <- as.data.frame(summary(best_mod)$coef)
+        # select only non-negative significant variables
+        signif_vars <- best_model_output[best_model_output[,'Pr(>|z|)'] <= .05]
+        
+        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',nrow(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
         print(signif_vars) 
+        print('')
         
         # extract coefficients
         coef_predictor_1 <- coef(best_mod)[1]
@@ -298,16 +322,20 @@ model_plots <- function(travel , prov)
     else if (length(chosen_predictors) == 6)
       { 
         print(paste0( 'Building Final Model With ', length(chosen_predictors),' predictors'))
-        best_mod <- glm(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]] + 
+        best_mod <- glm.cons(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]] + 
                           df_features[,chosen_predictors[[3]]] + df_features[,chosen_predictors[[4]]] + 
-                          df_features[,chosen_predictors[[5]]] + df_features[,chosen_predictors[[6]]], family = "poisson")
+                          df_features[,chosen_predictors[[5]]] + df_features[,chosen_predictors[[6]]], 
+                        family = "poisson")#,method="glm.fit.cons", cons = 1)
         
         # rename model output to bear variable names
         names(best_mod$coefficients) <- c(chosen_predictors[[1]],chosen_predictors[[2]],chosen_predictors[[3]],chosen_predictors[[4]],chosen_predictors[[5]],chosen_predictors[[6]])
-        # select only significant variables
-        signif_vars <- summary(best_mod)$coef[summary(best_mod)$coef[,4] <= .05, 1]
-        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',length(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
+        best_model_output <- as.data.frame(summary(best_mod)$coef)
+        # select only non-negative significant variables
+        signif_vars <- best_model_output[best_model_output[,'Pr(>|z|)'] <= .05]
+        
+        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',nrow(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
         print(signif_vars) 
+        print('')
         
         # extract coefficients
         coef_predictor_1 <- coef(best_mod)[1]
@@ -327,17 +355,20 @@ model_plots <- function(travel , prov)
     else 
       { 
         print(paste0( 'Building Final Model With ', length(chosen_predictors),' predictors'))
-        best_mod <- glm(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]] + 
+        best_mod <- glm.cons(response ~ 0 + df_features[,chosen_predictors[[1]]] + df_features[,chosen_predictors[[2]]] + 
                           df_features[,chosen_predictors[[3]]] + df_features[,chosen_predictors[[4]]] + 
-                          df_features[,chosen_predictors[[5]]] + df_features[,chosen_predictors[[6]]] + df_features[,chosen_predictors[[7]]], family = "poisson")
+                          df_features[,chosen_predictors[[5]]] + df_features[,chosen_predictors[[6]]] + 
+                          df_features[,chosen_predictors[[7]]], family = "poisson", method="glm.fit.cons", cons = 1)
         
         # rename model output to bear variable names
         names(best_mod$coefficients) <- c(chosen_predictors[[1]],chosen_predictors[[2]],chosen_predictors[[3]],chosen_predictors[[4]],chosen_predictors[[5]],chosen_predictors[[6]],chosen_predictors[[7]])
-        # select only significant variables
-        signif_vars <- summary(best_mod)$coef[summary(best_mod)$coef[,4] <= .05, 1]
-        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',length(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
-        print(signif_vars) 
+        best_model_output <- as.data.frame(summary(best_mod)$coef)
+        # select only non-negative significant variables
+        signif_vars <- best_model_output[best_model_output[,'Pr(>|z|)'] <= .05]
         
+        print(paste0(length(chosen_predictors), ' predictors were chosen for the final best model but only ',nrow(signif_vars), ' are significant at 0.05 alpha level with estimates: '))
+        print(signif_vars) 
+        print('')
         # extract coefficients
         coef_predictor_1 <- coef(best_mod)[1]
         coef_predictor_2 <- coef(best_mod)[2]
@@ -417,3 +448,4 @@ for (prv in 1 : length(atlantic_provinces) )
   {
     model_plots(active,prov = atlantic_provinces[prv])
   }
+
