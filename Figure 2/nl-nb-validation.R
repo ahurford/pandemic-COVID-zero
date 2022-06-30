@@ -8,21 +8,74 @@ cb = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
 NL.travel <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL_validation.csv')[-1]
 NB.travel <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NB_validation.csv')[,-1]
 CCODWG = read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/travel.csv')[,-1]
+active <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/active.csv')[,-1]%>%
+  filter(date<"2021-12-25")
+# Validation figures
+CCODWG_shift = tail(NB.travel$CCODWG,-1)
+NB.travel = head(NB.travel,-1)
+NB.travel$CCODWG = CCODWG_shift
+NB.travel = data.frame(NB.travel, diff = NB.travel$CCODWG-NB.travel$NB.govt)
+NL.travel = data.frame(NL.travel, diff = NL.travel$CCODWG-NL.travel$NLCHI)
+
+gNB.1 =ggplot(NB.travel,aes(x=as.Date(date_report)))+
+  geom_ribbon(aes(ymax=NB.govt, ymin=0), fill="black", alpha = 0.5)+
+  geom_line(aes(y=CCODWG), col="black",lwd=1)+
+scale_x_date(breaks = date_breaks("1 month"),
+             labels = date_format("%b %Y"))+
+  xlab("") +
+  ylab("imported cases (daily)")+
+  ggtitle("Validation of CCODWG NB importation data")+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+
+
+gNB.2 = ggplot(NB.travel, aes(diff)) +
+  geom_histogram(binwidth = 1, aes(y = after_stat(count / sum(count))))+
+  ylab("Frequency")+
+  xlab("CCODWG - NB government")+
+  theme_classic()
+
+gNL.1 =ggplot(NL.travel,aes(x=as.Date(date_report)))+
+  geom_ribbon(aes(ymax=NLCHI, ymin=0), fill=cb[2], alpha = 0.5)+
+  geom_line(aes(y=CCODWG), col=cb[2], lwd=1)+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"))+
+  xlab("") +
+  ylab("imported cases (daily)")+
+  ggtitle("Validation of CCODWG NL importation data")+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+
+
+gNL.2 = ggplot(NL.travel, aes(diff)) +
+  geom_histogram(binwidth = 1, aes(y = after_stat(count / sum(count))), fill = cb[2])+
+  ylab("Frequency")+
+  xlab("CCODWG - NLCHI")+
+  theme_classic()
+
+######
 
 NL_travel = CCODWG$NL_travel
 ON2 = CCODWG$ON_active
 AB2 = CCODWG$AB_active
 NS2 = CCODWG$NS_active
+BC2 = CCODWG$BC_active
+QC2 = CCODWG$QC_active
+MB2 = CCODWG$MB_active
+SK2 = CCODWG$SK_active
+NB2 = CCODWG$NB_active
 
-mod = glm(NL_travel ~ 0+ON2+AB2+NS2, family = "poisson") 
-c.ON = coef(mod)[1]
-c.AB = coef(mod)[2]
-c.NS = coef(mod)[3]
 
-ON = active$ON_active
+mod = glm.cons(NL_travel ~ 0+ON2+AB2+NS2+QC2+BC2+SK2+NB2+MB2,cons=1,family = "poisson")
+mod = glm.cons(NL_travel ~ 0+NS2,cons=1,family = "poisson")
+
+
 NS = active$NS_active
-AB = active$AB_active
-n = data.frame(date = active$date, n = exp(c.ON*ON + c.AB*AB + c.NS*NS))
+cNS = coef(mod)[1]
+
+n = data.frame(date = active$date, n = exp(cNS*NS))
+
+NL.travel <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NLCHI_cases.csv')[-1]%>%
+  rename(date = REPORTED_DATE)%>%
+  filter(date < "2021-12-25")
 
 obs.data = dplyr::select(NL.travel, date,TRAVEL)
 # To get the date where there were 0 travel-related cases in the data
@@ -48,12 +101,13 @@ gNL.tot =ggplot(data,aes(as.Date(date),group=1)) +
   scale_x_date(breaks = date_breaks("1 month"),
                labels = date_format("%b %Y"))+
   xlab("") +
-  ylab("travel-related cases (daily)")+
-  ggtitle("Newfoundland and Labrador Centre for Health Information data")+
+  ylab("imported cases (daily)")+
+  ggtitle("Statistical model of importations to NL")+
   coord_cartesian(ylim=c(0, 25))+
   annotate("text", x = as.Date("2020-12-01"), y = 20, label = "Date range of CCODWG used\nfor model fitting", col = "grey32")+
-  annotate("text", x = as.Date("2021-09-25"), y = 20, label = "Model predictions with\ndata shown for validation", col = "black")+
+  annotate("text", x = as.Date("2021-09-25"), y = 20, label = "Model predictions with\n NLCHI data shown for\nvalidation", col = "black")+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
 
-
+gNL.tot/(gNB.1 + gNL.1)/(gNB.2 + gNL.2) + plot_annotation(tag_levels = 'A') + plot_layout(heights = c(1.5,1, 1))
+ggsave("importation_validation.png", width=10)
 

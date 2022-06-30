@@ -198,7 +198,9 @@ active.fun = function(prov,pop){
   mutate("active.per.10K" = 1e4*numactive/pop)%>%
   dplyr::select(date,active.per.10K)%>%
   distinct()%>%
-  arrange(date)
+  arrange(date)%>%
+    as.data.frame()
+  return(active)
 }
 
 BC_active = active.fun("British Columbia", BC.pop)%>%
@@ -262,17 +264,30 @@ CCODWG.NB = group_by(CCODWG.NB,date_report)%>%
   dplyr::select(date_report,n)%>%
   rename("CCODWG"=n)
 
+date_report$date_report=as.Date(date_report$date_report)
+CCODWG.NB$date_report=as.Date(CCODWG.NB$date_report)
 # Validation period starts Jan 1 2021
 NB.travel.2=rename(NB.travel.2, "date_report" = Date, "NB.govt" = Travel.related.Cases)
-NB.validation = left_join(NB.travel.2, CCODWG.NB)%>%
-  filter(date_report<"2021-06-01")%>% # Since CCODWG stops reporting after this.
-  as.data.frame()
+NB.travel.2$date_report=as.Date(NB.travel.2$date_report)
+NB.validation = full_join(date_report, CCODWG.NB)%>%
+  full_join(NB.travel.2,by="date_report")%>%
+  filter(date_report<"2021-06-01"&date_report>"2020-12-31")%>% # Since CCODWG stops reporting after this.
+  as.data.frame()%>%
+  arrange(date_report)
+NB.validation[is.na(NB.validation)]=0
 
 # Validation period is the time covered for the CCOWGD  
 NL.travel.2=rename(NL.travel.2, "date_report" = REPORTED_DATE, "NLCHI" = TRAVEL)%>%
-  dplyr::select(date_report, NLCHI)
-NL.validation = left_join(CCODWG.NL,NL.travel.2)%>%
+  dplyr::select(date_report, NLCHI)%>%
   as.data.frame()
+NL.travel.2$date_report=as.Date(NL.travel.2$date_report)
+CCODWG.NL$date_report=as.Date(CCODWG.NL$date_report)
+NL.validation = full_join(date_report,CCODWG.NL)%>%
+  full_join(NL.travel.2)%>%
+  filter(date_report>="2020-07-01"&date_report<"2021-06-01")%>%
+  as.data.frame()%>%
+  arrange(date_report)
+NL.validation[is.na(NL.validation)]=0
 
 # (1) Data to make the graph of time series of travel-related cases, close contacts, and new cases, aggregated by week
 # for Atlantic Canada and the territories (except Nunavuat - no data)
