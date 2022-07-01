@@ -3,6 +3,7 @@ library(scales)
 library(zoo)
 library(bbmle)
 library(dplyr)
+library(zetadiv)
 cb = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
 # Travel-related cases arriving in NL
 NL.travel <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL_validation.csv')[-1]
@@ -25,7 +26,7 @@ scale_x_date(breaks = date_breaks("1 month"),
   xlab("") +
   ylab("imported cases (daily)")+
   ggtitle("Validation of CCODWG NB importation data")+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
 
 
 gNB.2 = ggplot(NB.travel, aes(diff)) +
@@ -42,7 +43,7 @@ gNL.1 =ggplot(NL.travel,aes(x=as.Date(date_report)))+
   xlab("") +
   ylab("imported cases (daily)")+
   ggtitle("Validation of CCODWG NL importation data")+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1)))
 
 
 gNL.2 = ggplot(NL.travel, aes(diff)) +
@@ -109,5 +110,5 @@ gNL.tot =ggplot(data,aes(as.Date(date),group=1)) +
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
 
 gNL.tot/(gNB.1 + gNL.1)/(gNB.2 + gNL.2) + plot_annotation(tag_levels = 'A') + plot_layout(heights = c(1.5,1, 1))
-ggsave("importation_validation.png", width=10)
+ggsave("importation_validation.png", width=10, height=10)
 
