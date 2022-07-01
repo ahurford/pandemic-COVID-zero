@@ -548,4 +548,4 @@ g.omicron2 = g.omicron+
 gout2 = (g.original+g.alpha)/(g.delta+g.omicron)
 ggsave("p_ijk.png", width = 8, height = 6)
 gout1 = (g.var+g.vax)/(g.n+g.omicron2)/g1+ plot_annotation(tag_levels = 'A') + plot_layout(heights = c(1,1, 2))
-ggsave("community-outbreak.png", width = 10, height = 8)
+ggsave("community-outbreak.png", width = 10, height = 12)
