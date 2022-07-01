@@ -76,8 +76,8 @@ cb2 = c(cb[2], cb[3], cb[1], cb[5], cb[4], cb[6])
 g.sum = ggplot(travel_related, aes(x=reorder(province, rep(c(1,2,4,3,5,6),2))))+
   geom_bar(aes(y=value), stat="identity", fill = c(cb2,cb2), alpha = c(rep(1,6), rep(0.5, 6)),col="black", lty = c(rep(1,6), rep(3,6)))+theme_classic()+
   xlab("")+ylab("total")+
-  annotate("text", x = "NL", y = 350, label = "contacts", size=2.4)+
-  annotate("text", x = "NL", y = 150, label = "importations", size=2.3)
+  annotate("text", x = "NL", y = 350, label = "contacts", size=3)+
+  annotate("text", x = "NL", y = 150, label = "importations", size=2.5)
 
 NL.perc = 100*(travel_day$NL_travel+travel_day$NL_contacts)/travel_day$NL_new_cases
 NL.perc = NL.perc[!is.na(NL.perc)&is.finite(NL.perc)]
@@ -127,4 +127,4 @@ g.per = ggplot(daily.per.travel, aes(x=reorder(province, c(NL.order, NS.order, P
   
 ### All plots together
 (g.NL+g.NS+g.PEI)/(g.NB+g.NWT+g.YT)/(g.per+g.sum)+ plot_annotation(tag_levels = 'A')
-ggsave("travel-related.png")
+ggsave("travel-related.png", height = 8)
