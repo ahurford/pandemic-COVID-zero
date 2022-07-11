@@ -242,8 +242,8 @@ t.sens = c(0,.19,.39,.58,.77,.73,.68,.64,.59,.55,.5)
 
 # Transmissibility advantange of variants
 omicron.trans = 1
-delta.trans = omicron.trans/1.78
-alpha.trans =delta.trans/2.05
+delta.trans = omicron.trans/0.91
+alpha.trans =delta.trans/1.95
 original.trans = alpha.trans/1.29
 
 ## Restrictions for unvaccinated travellers

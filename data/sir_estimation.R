@@ -74,13 +74,21 @@ mpearl.theta<-theta
 theta[1]/theta[4]
 
 ########### STUFF THAT AMY ADDED
-# Plot fit vs. data:
-plot(qq$deltaN1, typ="l")
-points(mpearl$newcases)
+library(deSolve)
 
-# Consider theta as before except theta[1] is 0.25 not 0.7
-theta<-c(0.25,0.1,12,1/10,0.6,1/2)
-qq<-sir.prediction(mpearl$newcases,2,theta)
-lines(qq$deltaN1, lty=2)
-
-# It seems like the fit is improved now, with theta[1] = beta =0.25 rather than 0.7 ???
+# Define the system of coupled ODEs for the Miller et al. model
+SIR = function(t,y,parms){
+    S <- y[1]
+    I <- y[2]
+    cumI <- y[3]
+    
+    
+    dS = -S*beta.fun(t)*(IP+bC*IC+bA*IA)/N
+    dE = S*beta.fun(t)*(IP+bC*IC+bA*IA)/N-deltaE*E
+    dIP = r*deltaE*E-deltaP*IP
+    dIC = deltaP*IP-deltaC*IC
+    dIA = (1-r)*deltaE*E - deltaA*IA
+    cumI = S*beta.fun(t)*(IP+bC*IC+bA*IA)/N
+    
+    return(list(c(dS,dI,cumI)))
+}
