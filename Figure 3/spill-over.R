@@ -152,9 +152,9 @@ g.vax =ggplot(data,aes(as.Date(date),group=1)) +
   ylab("proportion")+
   ggtitle("Vaccination")+
   #coord_cartesian(ylim=c(0, 25))+
-  annotate("text", x = as.Date("2021-11-01"), y = .6, label = "2", fontface=2)+
-  annotate("text", x = as.Date("2021-05-25"), y = .1, label = "1", fontface=2)+
-  annotate("text", x = as.Date("2020-10-01"), y = .75, label = "0", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-11-01"), y = .6, label = "2 doses", fontface=2)+
+  annotate("text", x = as.Date("2021-05-25"), y = .1, label = "1 dose", fontface=2)+
+  annotate("text", x = as.Date("2020-10-01"), y = .75, label = "0 doses", col = "black", fontface=2)+
   annotate("text", x = as.Date("2021-12-24"), y = .75, label = "3", col = "black", fontface=2)+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
 
@@ -242,9 +242,9 @@ t.sens = c(0,.19,.39,.58,.77,.73,.68,.64,.59,.55,.5)
 
 # Transmissibility advantange of variants
 omicron.trans = 1
-delta.trans = omicron.trans/3.3
-alpha.trans =delta.trans/1.5
-original.trans = alpha.trans/1.5
+delta.trans = omicron.trans/1.78
+alpha.trans =delta.trans/2.05
+original.trans = alpha.trans/1.29
 
 ## Restrictions for unvaccinated travellers
 m.unvax.original <- rep(1/alpha.travellers/1.5, L)
@@ -368,14 +368,15 @@ g.original =ggplot(p.original,aes(as.Date(date),group=1)) +
   geom_line(aes(y = partial), col="darkorchid")+
   geom_line(aes(y = unvax), col="grey")+
   scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+               labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
   xlab("") +
   ylab("probability")+
   ggtitle("Original variant")+
   #coord_cartesian(ylim=c(0, 25))+
-  annotate("text", x = as.Date("2021-09-01"), y = .05, label = "2+ doses", fontface=2, col = palette.colors(2)[2])+
-  annotate("text", x = as.Date("2021-11-01"), y = .01, label = "1 dose", fontface=2, col ="darkorchid")+
-  annotate("text", x = as.Date("2021-03-10"), y = .006, label = "no doses", col = "grey", fontface=2)+
+  annotate("text", x = as.Date("2021-12-07"), y = 0.75, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
+  annotate("text", x = as.Date("2021-06-23"), y = 0.75, label = "Reopening", angle=90, col  ="darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   #annotate("text", x = as.Date("2021-12-24"), y = .75, label = "+1", col = "black", fontface=2)+
   theme_classic() + theme(axis.title.x=element_blank(),
                           axis.text.x=element_blank(),
@@ -386,8 +387,15 @@ g.omicron =ggplot(p.omicron,aes(as.Date(date),group=1)) +
   geom_line(aes(y = full), col=palette.colors(2)[2])+
   geom_line(aes(y = partial), col="darkorchid")+
   geom_line(aes(y = unvax), col="grey")+
+  annotate("text", x = as.Date("2021-11-01"), y = .95, label = "2+ doses", fontface=2, col = palette.colors(2)[2])+
+  annotate("text", x = as.Date("2021-09-01"), y = .75, label = "1 dose", fontface=2, col ="darkorchid")+
+  annotate("text", x = as.Date("2021-06-01"), y = .1, label = "0 doses", col = "grey", fontface=2)+
   scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+               labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
+  annotate("text", x = as.Date("2021-12-07"), y = 0.6, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
+  annotate("text", x = as.Date("2021-06-23"), y = 0.75, label = "Reopening", angle=90, col  ="darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   xlab("") +
   ylab("probability")+
   ggtitle("Omicron variant")+
@@ -399,7 +407,11 @@ g.alpha =ggplot(p.alpha,aes(as.Date(date),group=1)) +
   geom_line(aes(y = partial), col="darkorchid")+
   geom_line(aes(y = unvax), col="grey")+
   scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+               labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
+  annotate("text", x = as.Date("2021-12-07"), y = 0.75, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
+  annotate("text", x = as.Date("2021-06-23"), y = 0.75, label = "Reopening", angle=90, col  ="darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   xlab("") +
   ylab("probability")+
   ggtitle("Alpha variant")+
@@ -413,7 +425,11 @@ g.delta =ggplot(p.delta,aes(as.Date(date),group=1)) +
   geom_line(aes(y = partial), col="darkorchid")+
   geom_line(aes(y = unvax), col="grey")+
   scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+               labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
+  annotate("text", x = as.Date("2021-12-07"), y = 0.75, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
+  annotate("text", x = as.Date("2021-06-23"), y = 0.75, label = "Reopening", angle=90, col  ="darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   xlab("") +
   ylab("probability")+
   ggtitle("Delta variant")+
@@ -490,10 +506,10 @@ g1 = ggplot(p1,aes(as.Date(date),group=1))+
   scale_y_continuous(breaks=c(0,.25, .5, .75,1))+
   ylab("7-day rolling mean, daily")+
   ggtitle("Newfoundland and Labrador: Community outbreak probability")+
-  annotate("text", x = as.Date("2021-12-10"), y = .9, label = "BA.1",col = palette.colors(7)[7], fontface=2)+
-  annotate("text", x = as.Date("2021-09-01"), y = .3, label = "Delta", col = palette.colors(3)[3], fontface=2)+
+  annotate("text", x = as.Date("2021-12-24"), y = .5, label = "BA.1",col = palette.colors(7)[7], fontface=2)+
+  annotate("text", x = as.Date("2021-09-01"), y = .45, label = "Delta", col = palette.colors(3)[3], fontface=2)+
   annotate("text", x = as.Date("2021-05-05"), y = .25, label = "Alpha", col = palette.colors(4)[4], fontface=2)+
-  annotate("text", x = as.Date("2021-07-17"), y = .4, label = "All", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-07-07"), y = .45, label = "All", col = "black", fontface=2)+
   annotate("text", x = as.Date("2021-01-10"), y = -.25, label = "Community\noutbreaks", col = "black", size=3)+
   annotate("text", x = as.Date("2021-02-20"), y = -.2, label = "Mt. Pearl", col = palette.colors(4)[4], size=3)+
   annotate("text", x = as.Date("2021-06-01"), y = -.2, label = "Lewisporte", col = palette.colors(3)[3], size=3)+
@@ -501,6 +517,10 @@ g1 = ggplot(p1,aes(as.Date(date),group=1))+
   annotate("text", x = as.Date("2021-09-05"), y = -.2, label = "Labrador", col = palette.colors(3)[3], size=3)+
   annotate("text", x = as.Date("2021-10-26"), y = -.2, label = "Burin Pen.", col = palette.colors(3)[3], size=3)+
   annotate("text", x = as.Date("2021-12-18"), y = -.2, label = "St. John's", col = palette.colors(7)[7], size=3)+
+  annotate("text", x = as.Date("2021-12-10"), y = 0.75, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
+  annotate("text", x = as.Date("2021-06-26"), y = 0.75, label = "Reopening", angle=90, col  ="darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
 
 n.variant = data.frame(date = data$date, original = n.original$total, alpha = n.alpha$total, delta = n.delta$total, omicron = n.omicron$total)
@@ -525,6 +545,10 @@ g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
                labels = date_format("%b %Y"))+
   #scale_y_continuous(trans='log2')+
   xlab("") +
+  #annotate("text", x = as.Date("2021-12-07"), y = 5, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
+  annotate("text", x = as.Date("2021-06-23"), y = 5, label = "Reopening", angle=90, col  ="darkgrey")+
+  #geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   ylab("7-day rolling mean, daily")+
   ggtitle("Travel-related cases")+
   #coord_cartesian(ylim=c(0, .5))+
@@ -537,12 +561,9 @@ g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
 g.omicron2 = g.omicron+
   ggtitle("Per traveller - Omicron")+
   theme(axis.title = element_text(size=rel(1)))+
-  ylab("Probability of a \ncommunity infection")+
-  scale_x_date(breaks = date_breaks("2 month"),
-               labels = date_format("%b %Y"))+
-  annotate("text", x = as.Date("2021-10-10"), y = .5, label = "1", col = "darkorchid", fontface=2)+
-  annotate("text", x = as.Date("2021-12-24"), y = .5, label = "2+", col = palette.colors(2)[2], fontface=2)+
-  annotate("text", x = as.Date("2021-05-01"), y = .1, label = "0", col = "grey", fontface=2)
+  ylab("Probability of a \ncommunity infection")
+  #scale_x_date(breaks = date_breaks("1 month"),
+               #labels = date_format("%b %Y"))
 
 #g.spillovers
 gout2 = (g.original+g.alpha)/(g.delta+g.omicron)
