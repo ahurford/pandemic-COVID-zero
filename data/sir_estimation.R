@@ -73,22 +73,40 @@ print(theta)
 mpearl.theta<-theta
 theta[1]/theta[4]
 
-########### STUFF THAT AMY ADDED
-library(deSolve)
+########### SIMULATION
+i0 <- mpearl$newcases[1]
+numsims <- 1000
+time <- seq(1,length(qq$Ic))
+sim.new.cases <- matrix(NA,nrow=length(time), ncol=numsims)
 
-# Define the system of coupled ODEs for the Miller et al. model
-SIR = function(t,y,parms){
-    S <- y[1]
-    I <- y[2]
-    cumI <- y[3]
-    
-    
-    dS = -S*beta.fun(t)*(IP+bC*IC+bA*IA)/N
-    dE = S*beta.fun(t)*(IP+bC*IC+bA*IA)/N-deltaE*E
-    dIP = r*deltaE*E-deltaP*IP
-    dIC = deltaP*IP-deltaC*IC
-    dIA = (1-r)*deltaE*E - deltaA*IA
-    cumI = S*beta.fun(t)*(IP+bC*IC+bA*IA)/N
-    
-    return(list(c(dS,dI,cumI)))
+for(i in seq(1,numsims)){
+    Ic <- i0/theta[5]
+    Iu <- i0*(1-theta[5])/theta[5]
+    for(t in time){
+        lambda1 = round(betaSIR(t,theta)*(Iu + theta[5]*Ic))
+        lambda2c = round(theta[4]*Ic)
+        lambda2u = round(theta[4]*Iu)
+        deltaN1 = rpois(1,lambda1)
+        deltaN2u = rpois(1,lambda2u)
+        deltaN2c = rpois(1,lambda2c)
+        deltaIc = rbinom(1,deltaN1,theta[5])
+        Ic = Ic + deltaIc - deltaN2c
+        Iu = Iu + (deltaN1 - deltaIc) - deltaN2u
+        sim.new.cases[t,i] = deltaIc
+    }
 }
+
+final.size = colSums(sim.new.cases)
+sort.final.size = sort(final.size)
+
+ilow = min(which(final.size==sort.final.size[25]))
+imax = min(which(final.size==sort.final.size[975]))
+plot(mpearl$newcases, ylim = c(0,100))
+lines(qq$deltaN1*theta[5])
+lines(sim.new.cases[,ilow],lty=2)
+lines(sim.new.cases[,imax],lty=2)
+
+theta[1] = 2.5*theta[1]
+qq2 = sir.prediction(mpearl$newcases,2,theta)
+lines(qq2$deltaN1*theta[5], col = "red")
+
