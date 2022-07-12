@@ -66,47 +66,101 @@ library(matlib)
 mpearl<-read.csv('/Users/ahurford/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/Data/mount_pearl.csv',header=T)
 theta<-c(0.7,0.1,12,1/10,0.6,1/2)
 for(i in 1:50){
-qq<-sir.prediction(mpearl$newcases,2,theta)
+qq<-sir.prediction(mpearl$newcases,mpearl$newcases[1],theta)
 theta[1:2]<-theta[1:2]-inv(sir.hessian(qq,theta))%*%sir.lee(qq,theta)
 print(theta)
 }
 mpearl.theta<-theta
 theta[1]/theta[4]
 
-########### SIMULATION
-i0 <- mpearl$newcases[1]
-numsims <- 1000
-time <- seq(1,length(qq$Ic))
-sim.new.cases <- matrix(NA,nrow=length(time), ncol=numsims)
 
-for(i in seq(1,numsims)){
-    Ic <- i0/theta[5]
-    Iu <- i0*(1-theta[5])/theta[5]
-    for(t in time){
-        lambda1 = round(betaSIR(t,theta)*(Iu + theta[5]*Ic))
-        lambda2c = round(theta[4]*Ic)
-        lambda2u = round(theta[4]*Iu)
-        deltaN1 = rpois(1,lambda1)
-        deltaN2u = rpois(1,lambda2u)
-        deltaN2c = rpois(1,lambda2c)
-        deltaIc = rbinom(1,deltaN1,theta[5])
-        Ic = Ic + deltaIc - deltaN2c
-        Iu = Iu + (deltaN1 - deltaIc) - deltaN2u
-        sim.new.cases[t,i] = deltaIc
+# plot the data
+plot(mpearl$newcases, ylim =c(0,60))
+lines(qq$deltaN1*theta[5])
+
+# JC - just ignore this... it is a failed experiment.
+#Prediction but without conditioning on last data point
+sir.prediction2<-function(T,i0,theta){
+    time.horizon<-T+1
+    Ic<-rep(0,time.horizon)
+    Iu<-rep(0,time.horizon)
+    deltaN1c<-rep(0,time.horizon)
+    deltaN1<-rep(0,time.horizon)
+    iu0<-i0*(1-theta[5])/theta[5]
+    ic0<-i0
+    Ic[1]<-ic0
+    Iu[1]<-iu0
+    deltaN1c[1]<-ic0
+    for(k in seq(2,time.horizon)){
+        dN1<-betaSIR(k,theta)*(iu0+theta[6]*ic0)
+        dN1c<-theta[5]*dN1
+        dN1u<-dN1-dN1c
+        if(k> 1/theta[4]) dN2<-theta[4]*(ic0+iu0)
+        else dN2<-0
+        ic0<-max(0,ic0+dN1c-theta[5]*dN2)
+        iu0<-max(0,iu0+dN1u-(1-theta[5])*dN2)
+        Ic[k]<-ic0
+        Iu[k]<-iu0
+        deltaN1c[k]<-deltaN1c[k]+dN1c
     }
+    return(list(Ic=Ic,Iu=Iu,deltaN1c=deltaN1c))
+}
+T=length(mpearl$newcases)
+res=sir.prediction2(T,mpearl$newcases[1],theta)
+#lines(res$deltaN1c, lty=2)
+
+
+##### JC start here...
+## Calibrated ODE fit
+require(deSolve)
+
+# Redefining betaSIR - it is exponential decay after the changepoint at rate theta[7] and levels off at theta[2]*theta[1]
+betaSIR = function(t,theta){
+if(t< theta[3]) return(theta[1])
+return(theta[1]*theta[2]+(theta[1]-theta[1]*theta[2])*exp(-theta[7]*(t-theta[3])))
 }
 
-final.size = colSums(sim.new.cases)
-sort.final.size = sort(final.size)
+# Here goes numerically solving the ODE (which is linear, but I was experimenting with non-linear)
+SIR = function(t,y,parms){
+I = y[1]
+dI = betaSIR(t,theta)*I*(theta[5]*theta[6]+(1-theta[5])) - theta[4]*I
+dcumI = betaSIR(t,theta)*I*(theta[5]*theta[6]+(1-theta[5])) 
+return(list(c(dI,dcumI)))
+}
 
-ilow = min(which(final.size==sort.final.size[25]))
-imax = min(which(final.size==sort.final.size[975]))
-plot(mpearl$newcases, ylim = c(0,100))
-lines(qq$deltaN1*theta[5])
-lines(sim.new.cases[,ilow],lty=2)
-lines(sim.new.cases[,imax],lty=2)
+# define time with increments less than 1 to have a nice smooth curve
+incr = 0.1
+times = seq(1,length(mpearl$newcases),incr)
+yini  = c(I=mpearl$newcases[1],cumI = mpearl$newcases[1])
 
-theta[1] = 2.5*theta[1]
-qq2 = sir.prediction(mpearl$newcases,2,theta)
-lines(qq2$deltaN1*theta[5], col = "red")
+# I think we should just fix this at 8 days and not fit it.
+theta[3]<-8
+
+# 3 calibrated parameters
+theta[1]<-0.90819869
+theta[2]<-0.03333333
+phi = 0.325
+theta<-c(theta,phi)
+
+make.graph = function(col){
+out2 <- ode(y = yini, parms = NULL, times=times, func = SIR)
+out2 <- data.frame(out2)
+new.cases = tail(theta[5]*diff(c(0,out2$cumI))/incr,-1)
+lines(head(times,-1),new.cases, col = col)
+# This is a print out of the final size of the model and the data
+print(c(sum(new.cases)*incr, sum(mpearl$newcases)))
+}
+
+# Alpha variant - note that in calibrating the fit I aimed for 472 cases in the outbreak
+make.graph("red")
+
+
+# Original variant - the final size is now only 115 (for the less transmissible original variant)
+theta[1] <- theta[1]/1.29
+make.graph("blue")
+
+# Delta variant - this outbreak is uncontrolled even after the changepoint, but that is fine
+# there is no vaccination yet...
+theta[1]<-theta[1]*1.29*1.95
+make.graph("green")
 
