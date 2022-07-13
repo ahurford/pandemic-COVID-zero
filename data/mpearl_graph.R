@@ -134,7 +134,7 @@ mm0<-rbind(mm0,data.frame(unvaxo=x0,finalsize=fsWild,variant='wild'),
 
 ggplot(mm0,aes(x=unvaxo,y=finalsize,group=variant,colour=variant))+
     geom_line(lwd=1)+
-    ylab('expected final count of confirmed cases')+
+    ylab('expected count of confirmed cases at day 27')+
     xlab('proportion of unvaxinated individuals')
 
 ggsave(file='mpearl2.svg',width=9,height=6)
