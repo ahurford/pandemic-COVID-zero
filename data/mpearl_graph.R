@@ -99,3 +99,42 @@ ggplot(mpframo,aes(x=time,y=deltaNc,group=run))+
     theme(axis.text.x = element_text(angle = 90, size=rel(1)))
 ggsave(file='mpearl1.svg',width=9,height=6)
 
+
+
+
+x0<-seq(0,1,0.05)
+bAlpha<-theta$beta0*(x0+(1-x0)*.07)
+bWild<-bAlpha/1.29
+bDelta<-theta$beta0/1.29*1.97*(x0+(1-x0)*.12)
+bOmicron<-theta$beta0/1.29*1.24*(x0+(1-x0)*.91)
+fsAlpha<-rep(NA,21)
+fsWild<-rep(NA,21)
+fsDelta<-rep(NA,21)
+fsOmicron<-rep(NA,21)
+th0<-theta
+for(k in 1:21){
+    th0$beta0<-bAlpha[k]
+    mm0<-simulantro(4,th0,dim(mpearl)[1])
+    fsAlpha[k]<-sum(with(mm0,tapply(deltaNc,as.factor(time),mean)))
+    th0$beta0<-bWild[k]
+    mm0<-simulantro(4,th0,dim(mpearl)[1])
+    fsWild[k]<-sum(with(mm0,tapply(deltaNc,as.factor(time),mean)))
+    th0$beta0<-bDelta[k]
+    mm0<-simulantro(4,th0,dim(mpearl)[1])
+    fsDelta[k]<-sum(with(mm0,tapply(deltaNc,as.factor(time),mean)))
+    th0$beta0<-bOmicron[k]
+    mm0<-simulantro(4,th0,dim(mpearl)[1])
+    fsOmicron[k]<-sum(with(mm0,tapply(deltaNc,as.factor(time),mean)))
+}
+rm(th0)
+mm0<-data.frame(unvaxo=x0,finalsize=fsAlpha,variant='alpha')
+mm0<-rbind(mm0,data.frame(unvaxo=x0,finalsize=fsWild,variant='wild'),
+           data.frame(unvaxo=x0,finalsize=fsDelta,variant='delta'),
+           data.frame(unvaxo=x0,finalsize=fsOmicron,variant='omicron'))
+
+ggplot(mm0,aes(x=unvaxo,y=finalsize,group=variant,colour=variant))+
+    geom_line(lwd=1)+
+    ylab('expected final count of confirmed cases')+
+    xlab('proportion of unvaxinated individuals')
+
+ggsave(file='mpearl2.svg',width=9,height=6)
