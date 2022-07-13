@@ -241,16 +241,16 @@ t.sens = c(0,.19,.39,.58,.77,.73,.68,.64,.59,.55,.5)
 1-mean(t.sens)
 
 # Transmissibility advantange of variants
-omicron.trans = 1
-delta.trans = omicron.trans/0.91
-alpha.trans =delta.trans/1.95
-original.trans = alpha.trans/1.29
+omicron.trans = 1.24/1.97
+delta.trans = 1 # reference value
+alpha.trans =1.29/1.97
+original.trans = 1/1.97 #correction for variant
 
 ## Restrictions for unvaccinated travellers
-m.unvax.original <- rep(1/alpha.travellers/1.5, L)
+m.unvax.original <- rep(1/alpha.travellers/1.29, L)
 m.unvax.alpha <- rep(1/alpha.travellers, L)
-m.unvax.delta <- rep(1.5/1/alpha.travellers,L)
-m.unvax.omicron <- rep((3.3*1.5)/1/alpha.travellers,L)
+m.unvax.delta <- rep(1.97/alpha.travellers/1.29,L)
+m.unvax.omicron <- rep(1.24/alpha.travellers/1.29,L)
 
 # on August 1, test on day 8 + isolation to negative for unvaccinated
 i = which(data$date=="2021-08-01")
@@ -387,12 +387,12 @@ g.omicron =ggplot(p.omicron,aes(as.Date(date),group=1)) +
   geom_line(aes(y = full), col=palette.colors(2)[2])+
   geom_line(aes(y = partial), col="darkorchid")+
   geom_line(aes(y = unvax), col="grey")+
-  annotate("text", x = as.Date("2021-11-01"), y = .95, label = "2+ doses", fontface=2, col = palette.colors(2)[2])+
-  annotate("text", x = as.Date("2021-09-01"), y = .75, label = "1 dose", fontface=2, col ="darkorchid")+
+  annotate("text", x = as.Date("2021-11-01"), y = .45, label = "2+ doses", fontface=2, col = palette.colors(2)[2])+
+  annotate("text", x = as.Date("2021-09-01"), y = .63, label = "1 dose", fontface=2, col ="darkorchid")+
   annotate("text", x = as.Date("2021-06-01"), y = .1, label = "0 doses", col = "grey", fontface=2)+
   scale_x_date(breaks = date_breaks("1 month"),
                labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
-  annotate("text", x = as.Date("2021-12-07"), y = 0.6, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
+  annotate("text", x = as.Date("2021-12-07"), y = 0.8, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
   annotate("text", x = as.Date("2021-06-23"), y = 0.75, label = "Reopening", angle=90, col  ="darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
   geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
@@ -506,8 +506,8 @@ g1 = ggplot(p1,aes(as.Date(date),group=1))+
   scale_y_continuous(breaks=c(0,.25, .5, .75,1))+
   ylab("7-day rolling mean, daily")+
   ggtitle("Newfoundland and Labrador: Community outbreak probability")+
-  annotate("text", x = as.Date("2021-12-24"), y = .5, label = "BA.1",col = palette.colors(7)[7], fontface=2)+
-  annotate("text", x = as.Date("2021-09-01"), y = .45, label = "Delta", col = palette.colors(3)[3], fontface=2)+
+  annotate("text", x = as.Date("2021-12-24"), y = .75, label = "BA.1",col = palette.colors(7)[7], fontface=2)+
+  annotate("text", x = as.Date("2021-09-01"), y = .63, label = "Delta", col = palette.colors(3)[3], fontface=2)+
   annotate("text", x = as.Date("2021-05-05"), y = .25, label = "Alpha", col = palette.colors(4)[4], fontface=2)+
   annotate("text", x = as.Date("2021-07-07"), y = .45, label = "All", col = "black", fontface=2)+
   annotate("text", x = as.Date("2021-01-10"), y = -.25, label = "Community\noutbreaks", col = "black", size=3)+

@@ -26,14 +26,14 @@ scale_x_date(breaks = date_breaks("1 month"),
   xlab("") +
   ylab("imported cases (daily)")+
   ggtitle("Validation of CCODWG NB importation data")+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1)))
 
 
 gNB.2 = ggplot(NB.travel, aes(diff)) +
   geom_histogram(binwidth = 1, aes(y = after_stat(count / sum(count))))+
   ylab("Frequency")+
   xlab("CCODWG - NB government")+
-  theme_classic()
+  theme_classic()+ theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1)))
 
 gNL.1 =ggplot(NL.travel,aes(x=as.Date(date_report)))+
   geom_ribbon(aes(ymax=NLCHI, ymin=0), fill=cb[2], alpha = 0.5)+
@@ -50,7 +50,7 @@ gNL.2 = ggplot(NL.travel, aes(diff)) +
   geom_histogram(binwidth = 1, aes(y = after_stat(count / sum(count))), fill = cb[2])+
   ylab("Frequency")+
   xlab("CCODWG - NLCHI")+
-  theme_classic()
+  theme_classic()+theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(.8)))
 
 ######
 
@@ -109,6 +109,9 @@ gNL.tot =ggplot(data,aes(as.Date(date),group=1)) +
   annotate("text", x = as.Date("2021-09-25"), y = 20, label = "Model predictions with\n NLCHI data shown for\nvalidation", col = "black")+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
 
-gNL.tot/(gNB.1 + gNL.1)/(gNB.2 + gNL.2) + plot_annotation(tag_levels = 'A') + plot_layout(heights = c(1.5,1, 1))
-ggsave("importation_validation.png", width=10, height=10)
+gNL.tot
+ggsave("importation_NL.png", width = 10, height=5)
 
+g=gNL.1+gNL.2+gNB.1 + gNB.2 
+g+plot_layout(widths = c(2, 1)) + plot_annotation(tag_levels = 'A') 
+ggsave("importation_validation.png", width=12)
