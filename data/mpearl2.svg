@@ -72,8 +72,8 @@
 <text x='304.03' y='411.64' text-anchor='middle' style='font-size: 8.80px; fill: #4D4D4D; font-family: Liberation Sans;' textLength='19.58px' lengthAdjust='spacingAndGlyphs'>0.50</text>
 <text x='421.39' y='411.64' text-anchor='middle' style='font-size: 8.80px; fill: #4D4D4D; font-family: Liberation Sans;' textLength='19.58px' lengthAdjust='spacingAndGlyphs'>0.75</text>
 <text x='538.75' y='411.64' text-anchor='middle' style='font-size: 8.80px; fill: #4D4D4D; font-family: Liberation Sans;' textLength='19.58px' lengthAdjust='spacingAndGlyphs'>1.00</text>
-<text x='304.03' y='424.23' text-anchor='middle' style='font-size: 11.00px; font-family: Liberation Sans;' textLength='206.06px' lengthAdjust='spacingAndGlyphs'>proportion of unvaxinated individuals</text>
-<text transform='translate(13.50,202.89) rotate(-90)' text-anchor='middle' style='font-size: 11.00px; font-family: Liberation Sans;' textLength='248.85px' lengthAdjust='spacingAndGlyphs'>expected count of confirmed cases at day 27</text>
+<text x='304.03' y='424.23' text-anchor='middle' style='font-size: 11.00px; font-family: Liberation Sans;' textLength='211.65px' lengthAdjust='spacingAndGlyphs'>proportion of unvaccinated individuals</text>
+<text transform='translate(13.50,202.89) rotate(-90)' text-anchor='middle' style='font-size: 11.00px; font-family: Liberation Sans;' textLength='324.22px' lengthAdjust='spacingAndGlyphs'>expected cummulative count of confirmed cases at day 27</text>
 <rect x='573.18' y='154.95' width='69.34' height='95.87' style='stroke-width: 1.07; stroke: none; fill: #FFFFFF;' />
 <text x='578.66' y='169.60' style='font-size: 11.00px; font-family: Liberation Sans;' textLength='38.85px' lengthAdjust='spacingAndGlyphs'>variant</text>
 <rect x='578.66' y='176.22' width='17.28' height='17.28' style='stroke-width: 1.07; stroke: none; fill: #F2F2F2;' />
