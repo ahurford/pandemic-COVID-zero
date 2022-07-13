@@ -57,6 +57,8 @@ mObs<-data.frame(time=seq(1,length(mObs)),mean=mObs)
 
 ttmm<-c(1,15,27)
 ttll<-mpearl$date[ttmm]
+
+
 ggplot(mpframo,aes(x=time,y=deltaNc,group=run))+
     geom_line(lwd=0.25,colour='bisque2')+
     geom_line(aes(y=mean,x=time),lwd=1,colour='bisque3',
@@ -66,6 +68,5 @@ ggplot(mpframo,aes(x=time,y=deltaNc,group=run))+
     ylab('new daily confirmed cases')+
     scale_x_continuous(breaks=ttmm,labels=ttll)+
     theme(axis.text.x=element_text(angle=45,hjust=1))
-    theme_bw()
 ggsave(file='mpearl.svg',width=9,height=6)
 
