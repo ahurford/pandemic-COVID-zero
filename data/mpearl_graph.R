@@ -47,26 +47,55 @@ simulantro<-function(i0,theta,time.horizon,runs=100){
 }
 
 library(ggplot2)
+library(scales) 
 mpearl<-read.csv('mount_pearl.csv',header=T)
 mpearl$time=seq(1,length(mpearl$newcases))
-theta<-list(beta0=0.765,delta=0.121,alpha=.44,changepoint=9,gamma=1/11,pi=0.6,
-            omega=1/2,mu=2/30)
+theta<-list(beta0=0.75,delta=0.091,alpha=.34,changepoint=9,gamma=1/11,pi=0.6,
+            omega=1/2,mu=3.5/30)
 mpframo<-simulantro(4,theta,dim(mpearl)[1])
-mObs<-with(mpframo,tapply(deltaNc,as.factor(time),mean))
-mObs<-data.frame(time=seq(1,length(mObs)),mean=mObs)
+mAlpha<-with(mpframo,tapply(deltaNc,as.factor(time),mean))
+mObs<-data.frame(time=seq(1,length(mAlpha)),mean=mAlpha,variant='alpha')
 
-ttmm<-c(1,15,27)
-ttll<-mpearl$date[ttmm]
-
+ttmm<-c(1,8,15,22)
+ttll<-c('1 Feb 2021', '15 Feb 2021', '15 Feb 2021', '22 Feb 2021')
 
 ggplot(mpframo,aes(x=time,y=deltaNc,group=run))+
     geom_line(lwd=0.25,colour='bisque2')+
-    geom_line(aes(y=mean,x=time),lwd=1,colour='bisque3',
+    geom_line(aes(y=mean,x=time),lwd=1,colour='coral2',
               data=mObs,inherit.aes=FALSE)+
    geom_point(aes(y=newcases,x=time),
               data=mpearl,inherit.aes=FALSE)+
     ylab('new daily confirmed cases')+
-    scale_x_continuous(breaks=ttmm,labels=ttll)+
-    theme(axis.text.x=element_text(angle=45,hjust=1))
+    scale_x_continuous(breaks = ttmm,
+               labels = ttll)+
+    theme(axis.text.x = element_text(angle = 90, size=rel(1)))
 ggsave(file='mpearl.svg',width=9,height=6)
+
+
+thOrig<-theta
+thOrig$beta0<-theta$beta0/1.29
+mOrig<-simulantro(4,thOrig,dim(mpearl)[1])
+mOrig<-with(mOrig,tapply(deltaNc,as.factor(time),mean))
+mObs<-rbind(mObs,
+  data.frame(time=seq(1,length(mOrig)),mean=mOrig,variant='wild'))
+
+thDelta<-theta
+thDelta$beta0<-theta$beta0/1.29*1.97
+mDelta<-simulantro(4,thDelta,dim(mpearl)[1])
+mDelta<-with(mDelta,tapply(deltaNc,as.factor(time),mean))
+mObs<-rbind(mObs,
+  data.frame(time=seq(1,length(mDelta)),mean=mDelta,variant='delta'))
+
+
+ggplot(mpframo,aes(x=time,y=deltaNc,group=run))+
+    geom_line(lwd=0.25,colour='bisque2')+
+    geom_line(aes(y=mean,x=time,group=variant,colour=variant),lwd=1,
+              data=mObs,inherit.aes=FALSE)+
+   geom_point(aes(y=newcases,x=time),
+              data=mpearl,inherit.aes=FALSE)+
+    ylab('new daily confirmed cases')+
+    scale_x_continuous(breaks = ttmm,
+               labels = ttll)+
+    theme(axis.text.x = element_text(angle = 90, size=rel(1)))
+ggsave(file='mpearl1.svg',width=9,height=6)
 
