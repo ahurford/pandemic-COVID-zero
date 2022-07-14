@@ -6,11 +6,8 @@ betaSIR<-function(t,theta){
             (1-theta$delta)*exp(-theta$alpha*(t-theta$changepoint)))
 }
 
-
-#################################################
-
 #theta<-c(beta0,delta,alpha,changepoint,gamma,pi,omega,mu...)
-mpearl<-read.csv('mount_pearl.csv',header=T)
+mpearl<-read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/mount_pearl.csv',header=T)
 theta<-list(beta0=0.35,delta=0.4,alpha=0.2,changepoint=10,gamma=1/10,pi=0.6,
             omega=1/2,mu=2/30)
 
@@ -48,56 +45,57 @@ simulantro<-function(i0,theta,time.horizon,runs=100){
 
 library(ggplot2)
 library(scales) 
-mpearl<-read.csv('mount_pearl.csv',header=T)
+library(patchwork)
+
 mpearl$time=seq(1,length(mpearl$newcases))
-theta<-list(beta0=0.75,delta=0.091,alpha=.34,changepoint=9,gamma=1/11,pi=0.6,
-            omega=1/2,mu=3.5/30)
+theta<-list(beta0=0.89,delta=0.03,alpha=.325,changepoint=8,gamma=1/10,pi=0.6,
+            omega=1/2,mu=0)
 mpframo<-simulantro(4,theta,dim(mpearl)[1])
 mAlpha<-with(mpframo,tapply(deltaNc,as.factor(time),mean))
-mObs<-data.frame(time=seq(1,length(mAlpha)),mean=mAlpha,variant='alpha')
-
-ttmm<-c(1,8,15,22)
-ttll<-c('1 Feb 2021', '15 Feb 2021', '15 Feb 2021', '22 Feb 2021')
-
-ggplot(mpframo,aes(x=time,y=deltaNc,group=run))+
-    geom_line(lwd=0.25,colour='bisque2')+
-    geom_line(aes(y=mean,x=time),lwd=1,colour='coral2',
-              data=mObs,inherit.aes=FALSE)+
-   geom_point(aes(y=newcases,x=time),
-              data=mpearl,inherit.aes=FALSE)+
-    ylab('new daily confirmed cases')+
-    scale_x_continuous(breaks = ttmm,
-               labels = ttll)+
-    theme(axis.text.x = element_text(angle = 90, size=rel(1)))
-ggsave(file='mpearl.svg',width=9,height=6)
-
+mAlpha.min <-with(mpframo,tapply(deltaNc,as.factor(time),min))
+mAlpha.max <-with(mpframo,tapply(deltaNc,as.factor(time),max))
+mObs<-data.frame(date=as.Date(mpearl$date), alpha = unname(mAlpha), alpha.min = unname(mAlpha.min), alpha.max = unname(mAlpha.max))
 
 thOrig<-theta
 thOrig$beta0<-theta$beta0/1.29
 mOrig<-simulantro(4,thOrig,dim(mpearl)[1])
 mOrig<-with(mOrig,tapply(deltaNc,as.factor(time),mean))
-mObs<-rbind(mObs,
-  data.frame(time=seq(1,length(mOrig)),mean=mOrig,variant='wild'))
+mObs<-data.frame(mObs,OV = unname(mOrig))
 
 thDelta<-theta
 thDelta$beta0<-theta$beta0/1.29*1.97
 mDelta<-simulantro(4,thDelta,dim(mpearl)[1])
 mDelta<-with(mDelta,tapply(deltaNc,as.factor(time),mean))
-mObs<-rbind(mObs,
-  data.frame(time=seq(1,length(mDelta)),mean=mDelta,variant='delta'))
+mObs<-data.frame(mObs, Delta = unname(mDelta))
 
+thOmicron<-theta
+thOmicron$beta0<-theta$beta0/1.29*1.24
+mOmicron<-simulantro(4,thOmicron,dim(mpearl)[1])
+mOmicron<-with(mOmicron,tapply(deltaNc,as.factor(time),mean))
+mObs<-data.frame(mObs, Omicron = unname(mOmicron))
+mObs<-data.frame(mObs, MtPearl = mpearl$newcases)
 
-ggplot(mpframo,aes(x=time,y=deltaNc,group=run))+
-    geom_line(lwd=0.25,colour='bisque2')+
-    geom_line(aes(y=mean,x=time,group=variant,colour=variant),lwd=1,
-              data=mObs,inherit.aes=FALSE)+
-   geom_point(aes(y=newcases,x=time),
-              data=mpearl,inherit.aes=FALSE)+
-    ylab('new daily confirmed cases')+
-    scale_x_continuous(breaks = ttmm,
-               labels = ttll)+
-    theme(axis.text.x = element_text(angle = 90, size=rel(1)))
-ggsave(file='mpearl1.svg',width=9,height=6)
+g1=ggplot(mObs,aes(x=as.Date(date),group=1))+
+    geom_ribbon(aes(ymin = alpha.min, ymax = alpha.max), fill = palette.colors(4)[4], alpha=.2)+
+  geom_line(aes(y=alpha), col = palette.colors(4)[4], lwd=1)+
+  geom_line(aes(y=Delta), col = palette.colors(3)[3])+
+  geom_line(aes(y=Omicron), col = palette.colors(7)[7])+
+  geom_line(aes(y=OV), col = "darkgrey")+
+  geom_point(aes(y=MtPearl), col = palette.colors(4)[4])+
+    ylab('new reported cases (daily)')+
+      scale_x_date(breaks = date_breaks("1 days"),
+                   labels = date_format("%d %b"))+
+  coord_cartesian(ylim = c(0,110))+
+  annotate("text", x = as.Date("2021-02-27"), y = 13, label = "Alpha", fontface=1, col=palette.colors(4)[4])+
+  annotate("text", x = as.Date("2021-02-27"), y = 21, label = "BA.1", fontface=1, col=palette.colors(7)[7])+
+  annotate("text", x = as.Date("2021-02-27"), y = 55, label = "Delta", fontface=1, col=palette.colors(3)[3])+
+  annotate("text", x = as.Date("2021-02-13"), y = 2, label = "Original", fontface=1, col="darkgrey")+
+  ggtitle("Mt. Pearl, NL, 2021 - Variant scenarios")+
+  xlab("Date of symptom onset")+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = 90, size=rel(1)))
+
+#ggsave(file='mpearl1.png',width=9,height=6)
 
 
 
@@ -127,14 +125,28 @@ for(k in 1:21){
     fsOmicron[k]<-sum(with(mm0,tapply(deltaNc,as.factor(time),mean)))
 }
 rm(th0)
-mm0<-data.frame(unvaxo=x0,finalsize=fsAlpha,variant='alpha')
-mm0<-rbind(mm0,data.frame(unvaxo=x0,finalsize=fsWild,variant='wild'),
-           data.frame(unvaxo=x0,finalsize=fsDelta,variant='delta'),
-           data.frame(unvaxo=x0,finalsize=fsOmicron,variant='omicron'))
+# mm0<-data.frame(unvaxo=x0,finalsize=fsAlpha,variant='Alpha')
+# mm0<-rbind(mm0,data.frame(unvaxo=x0,finalsize=fsWild,variant='OV'),
+#            data.frame(unvaxo=x0,finalsize=fsDelta,variant='Delta'),
+#            data.frame(unvaxo=x0,finalsize=fsOmicron,variant='Omicron'))
 
-ggplot(mm0,aes(x=unvaxo,y=finalsize,group=variant,colour=variant))+
-    geom_line(lwd=1)+
-    ylab('expected count of confirmed cases at day 27')+
-    xlab('proportion of unvaxinated individuals')
+mm0 = data.frame(full.vax = 100*(1-x0), alpha = fsAlpha, OV = fsWild, delta = fsDelta, omicron = fsOmicron)
 
-ggsave(file='mpearl2.svg',width=9,height=6)
+g2=ggplot(mm0,aes(x=full.vax,group=1))+
+    geom_line(aes(y=alpha), col = palette.colors(4)[4], lwd=1)+
+  geom_line(aes(y=delta), col = palette.colors(3)[3], lwd=1)+
+  geom_line(aes(y=omicron), col = palette.colors(7)[7],lwd=1)+
+  geom_line(aes(y=OV), col ="darkgrey", lwd=1)+
+  geom_hline(yintercept = sum(mpearl$newcases), lty = 2, col = palette.colors(4)[4])+
+    ylab('Mean reported cases (after 27 days)')+
+  coord_cartesian(ylim = c(0,1000))+
+  ggtitle("Mt. Pearl, NL, 2021 - Vaccination scenarios")+
+  annotate("text", x = 75, y = 510, label = "472 cases in the Mt. Pearl outbreak", fontface=1, col=palette.colors(4)[4])+
+  annotate("text", x = 40, y = 165, label = "Alpha", fontface=1, col=palette.colors(4)[4])+
+  annotate("text", x = 100, y = 200, label = "BA.1", fontface=1, col=palette.colors(7)[7])+
+  annotate("text", x = 21, y = 1000, label = "Delta", fontface=1, col=palette.colors(3)[3])+
+  annotate("text", x = 5, y = 80, label = "Original", fontface=1, col="darkgrey")+
+    xlab('% population with 2 doses of vaccine')+theme_classic()
+
+g1/g2+plot_annotation(tag_levels = 'A')
+ggsave(file='mpearl2.png')
