@@ -193,7 +193,7 @@ i = which(data$date=="2021-09-18")
 masks[i:L] <- 0.5
 
 ## Estiamte number of travellers when the alpha variant occurred (divided by .5 because masks were mandatory)
-alpha.travellers = sum(data$n*data$alpha)/0.5
+alpha.travellers = (1+c)*sum(data$n*data$alpha)/0.5
 
 ## Consideration of vaccination in the NL community (no additional doses during study period)
 NL.original = data$NL.unvax*VE$original[1] + data$NL.partial*VE$original[2] + data$NL.full*VE$original[3]
