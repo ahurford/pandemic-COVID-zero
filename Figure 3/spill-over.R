@@ -135,7 +135,7 @@ g.var =ggplot(data,aes(as.Date(date),group=1)) +
   annotate("text", x = as.Date("2021-12-10"), y = .9, label = "BA.1", fontface=2)+
   annotate("text", x = as.Date("2021-09-01"), y = .6, label = "Delta", col = "black", fontface=2)+
   annotate("text", x = as.Date("2021-04-07"), y = .25, label = "Alpha", col = "black", fontface=2)+
-  annotate("text", x = as.Date("2020-09-01"), y = .75, label = "Original", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-03-01"), y = .9, label = "Original", col = "black", fontface=2)+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
 
 g.vax =ggplot(data,aes(as.Date(date),group=1)) +
@@ -154,7 +154,7 @@ g.vax =ggplot(data,aes(as.Date(date),group=1)) +
   #coord_cartesian(ylim=c(0, 25))+
   annotate("text", x = as.Date("2021-11-01"), y = .6, label = "2 doses", fontface=2)+
   annotate("text", x = as.Date("2021-05-25"), y = .1, label = "1 dose", fontface=2)+
-  annotate("text", x = as.Date("2020-10-01"), y = .75, label = "0 doses", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-03-01"), y = .9, label = "0 doses", col = "black", fontface=2)+
   annotate("text", x = as.Date("2021-12-24"), y = .75, label = "3", col = "black", fontface=2)+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
 
@@ -345,8 +345,8 @@ p.omicron = data.frame(date = data$date,unvax = m.unvax.omicron*NL.omicron, part
   mutate(total = unvax+partial+full+additional)
 
 community.outbreaks = data.frame(date= data$date, community = data$COMMUNITY)
-ymax=-.05
-ymin=-.075
+ymax=-.05*7
+ymin=-.075*7
 community.outbreaks$community[which(community.outbreaks$community<=5)]=ymin
 community.outbreaks$community[which(community.outbreaks$community>5)]=ymax
 community.alpha = community.outbreaks%>%
@@ -472,61 +472,45 @@ E.alpha = c(E.alpha[1:6], rollmean(E.alpha, 7))
 E.delta = c(E.delta[1:6], rollmean(E.delta, 7))
 E.omicron = c(E.omicron[1:6], rollmean(E.omicron, 7))
 
-E.spillovers = data.frame(date = data$date, original = E.original, alpha = E.alpha, delta = E.delta, omicron = E.omicron)
+E.spillovers = data.frame(date = data$date, original = E.original, alpha = E.alpha, delta = E.delta, omicron = E.omicron, total = E.original+E.alpha+E.delta+E.omicron)
 
-g.spillovers =ggplot(E.spillovers,aes(as.Date(date),group=1)) +
-  geom_ribbon(aes(ymax = alpha+delta+omicron+original, ymin=alpha+delta+original), fill=palette.colors(7)[7], alpha=.8)+
-  geom_ribbon(aes(ymax = alpha+delta+original, ymin=alpha+original), fill=palette.colors(3)[3], alpha=.8)+
-  geom_ribbon(aes(ymax = alpha+original, ymin=original), fill=palette.colors(4)[4], alpha=.8)+
-  geom_ribbon(aes(ymax = original, ymin=0), fill="grey", alpha=.8)+
-  scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"))+
-  xlab("") +
-  ylab("Expected number per day (7-day rolling mean)")+
-  ggtitle("Spillovers")+
-  #coord_cartesian(ylim=c(0, .5))+
-  annotate("text", x = as.Date("2021-12-10"), y = .9, label = "BA.1", fontface=2)+
-  annotate("text", x = as.Date("2021-09-01"), y = .6, label = "Delta", col = "black", fontface=2)+
-  annotate("text", x = as.Date("2021-04-07"), y = .25, label = "Alpha", col = "black", fontface=2)+
-  annotate("text", x = as.Date("2020-09-01"), y = .75, label = "Original", col = "black", fontface=2)+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
-
-g1 = ggplot(p1,aes(as.Date(date),group=1))+
-  geom_line(aes(y=total), col = "black")+
-  geom_line(aes(y=omicron), col=palette.colors(7)[7])+
-  geom_line(aes(y=delta), col=palette.colors(3)[3])+
-  geom_line(aes(y = alpha), col=palette.colors(4)[4])+
-  geom_line(aes(y = original), col="grey")+
+# 7 day rolling mean (daily) x 7 days/week
+g1 = ggplot(E.spillovers,aes(as.Date(date),group=1))+
+  geom_line(aes(y=7*total), col = "black")+
+  geom_line(aes(y=7*omicron), col=palette.colors(7)[7])+
+  geom_line(aes(y=7*delta), col=palette.colors(3)[3])+
+  geom_line(aes(y = 7*alpha), col=palette.colors(4)[4])+
+  geom_line(aes(y = 7*original), col="grey")+
   geom_ribbon(aes(ymax=community.outbreaks$alpha, ymin = ymin), fill =palette.colors(4)[4])+
   geom_ribbon(aes(ymax=community.outbreaks$delta, ymin = ymin), fill =palette.colors(3)[3])+
   geom_ribbon(aes(ymax=community.outbreaks$omicron, ymin = ymin), fill =palette.colors(7)[7])+
   scale_x_date(breaks = date_breaks("1 month"),
                labels = date_format("%b %Y"),limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
   xlab("") +
-  scale_y_continuous(breaks=c(0,.05,.1, .15,.2))+
-  ylab("7-day rolling mean, daily")+
-  ggtitle("Newfoundland and Labrador: Community outbreak probability")+
+  scale_y_continuous(breaks=c(0,.5, 1,1.5))+
+  ylab("Mean spillovers, weekly")+
+  ggtitle("Newfoundland and Labrador: Traveller-community spillovers")+
   #geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, .2)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
-  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, .2)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, .2)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, .2)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  geom_line(data = data.frame(x = c(as.Date("2021-12-21"), as.Date("2021-12-21")), y = c(0, .2)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  annotate("text", x = as.Date("2021-12-12"), y = .1, label = "BA.1",col = palette.colors(7)[7], fontface=2)+
-  annotate("text", x = as.Date("2021-09-01"), y = .033, label = "Delta", col = palette.colors(3)[3], fontface=2)+
-  annotate("text", x = as.Date("2021-05-05"), y = .02, label = "Alpha", col = palette.colors(4)[4], fontface=2)+
-  annotate("text", x = as.Date("2021-07-09"), y = .08, label = "All", col = "black", fontface=2)+
-  annotate("text", x = as.Date("2021-01-10"), y = -.03, label = "Community\noutbreaks", col = "black", size=3)+
-  annotate("text", x = as.Date("2021-02-20"), y = -.03, label = "Mt. Pearl", col = palette.colors(4)[4], size=3)+
-  annotate("text", x = as.Date("2021-06-01"), y = -.03, label = "Lewisporte", col = palette.colors(3)[3], size=3)+
-  annotate("text", x = as.Date("2021-09-29"), y = -.03, label = "Baie Verte", col = palette.colors(3)[3], size=3)+
-  annotate("text", x = as.Date("2021-09-05"), y = -.03, label = "Labrador", col = palette.colors(3)[3], size=3)+
-  annotate("text", x = as.Date("2021-10-26"), y = -.03, label = "Burin Pen.", col = palette.colors(3)[3], size=3)+
-  annotate("text", x = as.Date("2021-12-18"), y = -.03, label = "St. John's", col = palette.colors(7)[7], size=3)+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-12-21"), as.Date("2021-12-21")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  annotate("text", x = as.Date("2021-12-07"), y = .1*7, label = "BA.1",col = palette.colors(7)[7], fontface=2)+
+  annotate("text", x = as.Date("2021-09-01"), y = .033*7, label = "Delta", col = palette.colors(3)[3], fontface=2)+
+  annotate("text", x = as.Date("2021-05-05"), y = .02*7, label = "Alpha", col = palette.colors(4)[4], fontface=2)+
+  annotate("text", x = as.Date("2021-07-09"), y = .08*7, label = "All", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-01-10"), y = -.03*7, label = "Community\noutbreaks", col = "black", size=3)+
+  annotate("text", x = as.Date("2021-02-20"), y = -.03*7, label = "Mt. Pearl", col = palette.colors(4)[4], size=3)+
+  annotate("text", x = as.Date("2021-06-01"), y = -.03*7, label = "Lewisporte", col = palette.colors(3)[3], size=3)+
+  annotate("text", x = as.Date("2021-09-29"), y = -.03*7, label = "Baie Verte", col = palette.colors(3)[3], size=3)+
+  annotate("text", x = as.Date("2021-09-05"), y = -.03*7, label = "Labrador", col = palette.colors(3)[3], size=3)+
+  annotate("text", x = as.Date("2021-10-26"), y = -.03*7, label = "Burin Pen.", col = palette.colors(3)[3], size=3)+
+  annotate("text", x = as.Date("2021-12-18"), y = -.03*7, label = "St. John's", col = palette.colors(7)[7], size=3)+
   #annotate("text", x = as.Date("2021-12-10"), y = 0.15, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
-  annotate("text", x = as.Date("2021-06-26"), y = 0.15, label = "Step 1", angle=90, col  ="darkgrey")+
-  annotate("text", x = as.Date("2021-07-26"), y = 0.15, label = "Step 2", angle=90, col  ="darkgrey")+
-  annotate("text", x = as.Date("2021-09-25"), y = 0.15, label = "Step 2a", angle=90, col  ="darkgrey")+
-  annotate("text", x = as.Date("2021-12-16"), y = 0.15, label = "Step 2b", angle=90, col  ="darkgrey")+
+  annotate("text", x = as.Date("2021-06-26"), y = 0.15*7, label = "Step 1", angle=90, col  ="darkgrey")+
+  annotate("text", x = as.Date("2021-07-26"), y = 0.15*7, label = "Step 2", angle=90, col  ="darkgrey")+
+  annotate("text", x = as.Date("2021-09-25"), y = 0.15*7, label = "Step 2a", angle=90, col  ="darkgrey")+
+  annotate("text", x = as.Date("2021-12-16"), y = 0.15*7, label = "Step 2b", angle=90, col  ="darkgrey")+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
 
 n.variant = data.frame(date = data$date, original = n.original$total, alpha = n.alpha$total, delta = n.delta$total, omicron = n.omicron$total)
@@ -561,7 +545,7 @@ g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
   annotate("text", x = as.Date("2021-12-15"), y = 9, label = "BA.1", fontface=2, col = palette.colors(7)[7])+
   annotate("text", x = as.Date("2021-10-01"), y = 2.5, label = "Delta", col =palette.colors(3)[3], fontface=2)+
   annotate("text", x = as.Date("2021-04-21"), y = 7, label = "Alpha", fontface=2, col=palette.colors(4)[4])+
-  annotate("text", x = as.Date("2021-01-01"), y = .75, label = "Original", col = "grey", fontface=2)+
+  annotate("text", x = as.Date("2021-01-15"), y = 1.4, label = "Original", col = "grey", fontface=2)+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
 
 g.omicron2 = g.omicron+
@@ -574,5 +558,5 @@ g.omicron2 = g.omicron+
 #g.spillovers
 gout2 = (g.original+g.alpha)/(g.delta+g.omicron)
 ggsave("p_ijk.png", width = 8, height = 6)
-gout1 = (g.var+g.vax)/(g.n)/g1+ plot_annotation(tag_levels = 'A') + plot_layout(heights = c(1,1, 2))
-ggsave("~/Desktop/community-outbreak.png", width = 10, height = 12)
+gout1 = g.var+g.n+g.vax+g1 + plot_annotation(tag_levels = 'A') + plot_layout(widths = c(1, 2))
+ggsave("~/Desktop/community-outbreak.png", width = 14, height = 8)
