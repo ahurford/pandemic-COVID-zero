@@ -11,7 +11,7 @@ library(patchwork)
 ## Color map
 cb = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
 
-##----------
+##---------- 1. LOAD AND CLEAN DATA
 ## Load the data & clean to minimum level with date and the time variable
 # Travel-related cases arriving in NL, n (source: NLCHI data)
 n <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL-travel.csv')[,-1]%>%
@@ -119,60 +119,53 @@ data <- var.interp()%>%rename(omicron = freq)%>%
   mutate(original = round(1- omicron - delta-alpha,2))
 # rounding is to remove -ve numbers
 
-g.var =ggplot(data,aes(as.Date(date),group=1)) +
-  geom_ribbon(aes(ymax=1, ymin=alpha+delta+omicron), fill="grey", alpha=0.3)+
-  geom_ribbon(aes(ymax = alpha+delta+omicron, ymin=alpha+delta), fill=palette.colors(7)[7], alpha=.8)+
-  geom_ribbon(aes(ymax = alpha+delta, ymin=alpha), fill=palette.colors(3)[3], alpha=.8)+
-  geom_ribbon(aes(ymax = alpha, ymin=0), fill=palette.colors(4)[4], alpha=.8)+
-  scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"),limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
-  xlab("") +
-  ylab("proportion")+
-  ggtitle("Variants")+
-  #coord_cartesian(ylim=c(0, 25))+
-  annotate("text", x = as.Date("2021-12-10"), y = .9, label = "BA.1", fontface=2)+
-  annotate("text", x = as.Date("2021-09-01"), y = .6, label = "Delta", col = "black", fontface=2)+
-  annotate("text", x = as.Date("2021-04-07"), y = .25, label = "Alpha", col = "black", fontface=2)+
-  annotate("text", x = as.Date("2021-03-01"), y = .9, label = "Original", col = "black", fontface=2)+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
+### intervention data: https://www.bankofcanada.ca/markets/market-operations-liquidity-provision/covid-19-actions-support-economy-financial-system/covid-19-stringency-index/
+interventions = read.csv("https://raw.githubusercontent.com/ahurford/pandemic-COVID-zero/main/data/COVID-19_STRINGENCY_INDEX.csv", skip = 26)
+# This column corresponds to NL
+NPIs = data.frame(date = interventions$date, stringency=interventions$SAN_LYOJ20210218_C2_S7)
+# Extract the dates corresponding to data
+NPIs = NPIs%>%filter(date>=data$date[1]&date<=tail(data$date,1))
 
-g.vax =ggplot(data,aes(as.Date(date),group=1)) +
-  geom_ribbon(aes(ymax=1, ymin=1-CAN.unvax), fill="grey", alpha=0.3)+
-  geom_ribbon(aes(ymax = CAN.full+CAN.partial+CAN.additional, ymin=CAN.partial+CAN.full), fill="dodgerblue", alpha=.5)+
-  geom_ribbon(aes(ymax = CAN.partial+CAN.full, ymin=CAN.partial), fill=palette.colors(2)[2], alpha=.5)+
-  geom_ribbon(aes(ymax = CAN.partial, ymin=0), fill="darkorchid", alpha=.5)+
-  geom_line(aes(y=NL.full+NL.partial+NL.additional), col="green")+
-  geom_line(aes(y=NL.partial+NL.full), col=palette.colors(2)[2])+
-  geom_line(aes(y=NL.partial), col="darkorchid")+
-  scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"),limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
-  xlab("") +
-  ylab("proportion")+
-  ggtitle("Vaccination")+
-  #coord_cartesian(ylim=c(0, 25))+
-  annotate("text", x = as.Date("2021-11-01"), y = .6, label = "2 doses", fontface=2)+
-  annotate("text", x = as.Date("2021-05-25"), y = .1, label = "1 dose", fontface=2)+
-  annotate("text", x = as.Date("2021-03-01"), y = .9, label = "0 doses", col = "black", fontface=2)+
-  annotate("text", x = as.Date("2021-12-24"), y = .75, label = "3", col = "black", fontface=2)+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
 
-###-------
+# Clean data from actual community outbreaks
+community.outbreaks = data.frame(date= data$date, community = data$COMMUNITY)
+ymax=-.05*7
+ymin=-.075*7
+community.outbreaks$community[which(community.outbreaks$community<=5)]=ymin
+community.outbreaks$community[which(community.outbreaks$community>5)]=ymax
+community.alpha = community.outbreaks%>%
+  filter(date<"2021-05-01")%>%
+  rename(alpha=community)
+community.delta= community.outbreaks%>%
+  filter(date>="2021-05-01"&date<="2021-12-01")%>%
+  rename(delta=community)
+community.omicron= community.outbreaks%>%
+  filter(date>="2021-12-01")%>%
+  rename(omicron=community)
+community.outbreaks=left_join(community.outbreaks, community.alpha)%>%
+  left_join(community.delta)%>%
+  left_join(community.omicron)
+community.outbreaks[is.na(community.outbreaks)]=ymin
+
+###------- POST-ARRIVAL TRAVEL RESTRICTIONS
 # Vaccine efficacies and calculating, T_j,k, vaccination status and variant given infection
 # These are the Pfizer values
 # https://www.nejm.org/doi/full/10.1056/NEJMoa2119451 (Omicron values, 2-does 25+ weeks)
 # rows are vaccination status: unvax, 1-dose, 2-doses and 3-doses.
 VE = data.frame(original = c(0, .49, .93, .93), alpha = c(0, .49, .93, .93), delta = c(0, .33, 0.88, 0.88), omicron = c(0, 0, 0.09, 0.67))
-T.original = data.frame(unvax = data$CAN.unvax*VE$original[1], partial = data$CAN.partial*VE$original[2], full = data$CAN.full*VE$original[3], additional = data$CAN.additional*VE$original[4])*data$original
-T.alpha = data.frame(unvax = data$CAN.unvax*VE$alpha[1], partial = data$CAN.partial*VE$alpha[2], full = data$CAN.full*VE$alpha[3], additional = data$CAN.additional*VE$alpha[4])*data$alpha
-T.delta = data.frame(unvax = data$CAN.unvax*VE$delta[1], partial = data$CAN.partial*VE$delta[2], full = data$CAN.full*VE$delta[3], additional = data$CAN.additional*VE$delta[4])*data$delta
-T.omicron = data.frame(unvax = data$CAN.unvax*VE$omicron[1], partial = data$CAN.partial*VE$omicron[2], full = data$CAN.full*VE$omicron[3], additional = data$CAN.additional*VE$omicron[4])*data$omicron
+T.original1 = data.frame(unvax = data$CAN.unvax*VE$original[1], partial = data$CAN.partial*VE$original[2], full = data$CAN.full*VE$original[3], additional = data$CAN.additional*VE$original[4])*data$original
+T.alpha1 = data.frame(unvax = data$CAN.unvax*VE$alpha[1], partial = data$CAN.partial*VE$alpha[2], full = data$CAN.full*VE$alpha[3], additional = data$CAN.additional*VE$alpha[4])*data$alpha
+T.delta1 = data.frame(unvax = data$CAN.unvax*VE$delta[1], partial = data$CAN.partial*VE$delta[2], full = data$CAN.full*VE$delta[3], additional = data$CAN.additional*VE$delta[4])*data$delta
+T.omicron1 = data.frame(unvax = data$CAN.unvax*VE$omicron[1], partial = data$CAN.partial*VE$omicron[2], full = data$CAN.full*VE$omicron[3], additional = data$CAN.additional*VE$omicron[4])*data$omicron
 
 # Normalize by dividing by the sum of the row sums:
-T.sum = rowSums(T.original)+rowSums(T.alpha) + rowSums(T.delta) + rowSums(T.omicron)
-T.original = T.original/T.sum
-T.alpha = T.alpha/T.sum
-T.delta = T.delta/T.sum
-T.omicron = T.omicron/T.sum
+T.sum = rowSums(T.original1+T.alpha1+T.delta1+T.omicron1)
+T.original = T.original1/T.sum
+T.alpha = T.alpha1/T.sum
+T.delta = T.delta1/T.sum
+T.omicron = T.omicron1/T.sum
+
+test1=rowSums(T.original+T.alpha+T.delta+T.omicron)
 
 ## Self-isolation until negative test
 # Another restriction that has been applied to travellers into NL is self-isolation until a negative test result.
@@ -263,13 +256,14 @@ m.2[i:L] <- 1
 # Since the study ends on Dec 24, the only impact
 # is due to self-isolation
 i = which(data$date=="2021-12-21")
-m.2[i:L] = inf.iso(5)*0.1
-m.2[(i+1):L] = inf.iso(5)*0.1
-m.2[(i+2):L]= inf.iso(5)*0.1
-m.2[(i+3):L] = inf.iso(5)*0.1
+m.2[i:L] = inf.iso(1)
+m.2[(i+1):L] = inf.iso(2)
+m.2[(i+2):L]= inf.iso(3)
+m.2[(i+3):L] = inf.iso(4)
 
 traveller.measures = data.frame(date = data$date,m.unvax, m.1, m.2, m.3=m.2)
 
+####### PLOTS OF POST-ARRIVAL MEASURES
 g.travel.measures =ggplot(traveller.measures,aes(as.Date(date),group=1)) +
   geom_line(aes(y = m.unvax), col="grey")+
   geom_line(aes(y = m.1), col="darkorchid")+
@@ -288,10 +282,10 @@ g.travel.measures =ggplot(traveller.measures,aes(as.Date(date),group=1)) +
   #annotate("text", x = as.Date("2021-12-24"), y = .75, label = "+1", col = "black", fontface=2)+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1)),plot.title=element_text(size=rel(1)),axis.title = element_text(size=rel(1.2)))
 
-travel.unvax= m.unvax*(T.original$unvax*data$original+T.alpha$unvax*data$alpha+T.delta$unvax*data$delta+T.omicron$unvax*data$omicron)
-travel.partial = m.1*(T.original$partial*data$original+T.alpha$partial*data$alpha+T.delta$partial*data$delta+T.omicron$partial*data$omicron)
-travel.full = m.2*(T.original$full*data$original+T.alpha$full*data$alpha+T.delta$full*data$delta+T.omicron$full*data$omicron)
-travel.additional = m.2*(T.original$additional*data$original+T.alpha$additional*data$alpha+T.delta$additional*data$delta+T.omicron$additional*data$omicron)
+travel.unvax= m.unvax*(T.original$unvax+T.alpha$unvax+T.delta$unvax+T.omicron$unvax)*data$CAN.unvax
+travel.partial = m.1*(T.original$partial+T.alpha$partial+T.delta$partial+T.omicron$partial)*data$CAN.partial
+travel.full = m.2*(T.original$full+T.alpha$full+T.delta$full+T.omicron$full)*data$CAN.full
+travel.additional = m.2*(T.original$additional+T.alpha$additional+T.delta$additional+T.omicron$additional)*data$CAN.additional
 traveller.measures2 = data.frame(date = data$date,unvax = travel.unvax ,partial=travel.partial,full=travel.full, additional = travel.additional)
 
 g.travel.measures2 =ggplot(traveller.measures2,aes(as.Date(date),group=1)) +
@@ -315,207 +309,39 @@ g.travel.measures2 =ggplot(traveller.measures2,aes(as.Date(date),group=1)) +
 
 g.travel.measures+g.travel.measures2+plot_annotation(tag_levels = 'A', title = "Impact of post-arrival travel restrictions",theme = theme(plot.title = element_text(hjust = 0.5,face = "bold")))
 ggsave("post_arrival.png", width = 8, height=4)
-## Maskwearing by anyone in the NL community (including travellers)
-# It is assumed that mandatory masking reduces transmission by 50%
-# Masking recommended reduces transmission by 25%
-masks1 = 0.5
-masks2 = 0.75
 
-# No mask prior to Aug 24, 2020
-masks <- rep(1,L)
-# Mandatory masks August 24, 2020 to August 10, 2021
-i = which(data$date=="2020-08-24")
-masks[i:L] <- masks1
-# Masks recommended become recommended on August 10, 2021
-i = which(data$date =="2021-08-10")
-masks[i:L] <- masks2
-# Mask are mandatory Sept 18, 2021 to beyond the end date
-i = which(data$date=="2021-09-18")
-masks[i:L] <- masks1
-
-# Pharmaceutical interventions
-##########
+######### NL COMMUNITY MEASURES
 # Vulnerability of the NL community to different variants
 NL.original = data$NL.unvax*(1-VE$original[1]) + data$NL.partial*(1-VE$original[2]) + data$NL.full*(1-VE$original[3]) + data$NL.additional*(1-VE$original[4])
 NL.alpha = data$NL.unvax*(1-VE$alpha[1]) + data$NL.partial*(1-VE$alpha[2]) + data$NL.full*(1-VE$alpha[3]) + data$NL.additional*(1-VE$alpha[4])
 NL.delta = data$NL.unvax*(1-VE$delta[1]) + data$NL.partial*(1-VE$delta[2]) + data$NL.full*(1-VE$delta[3]) + data$NL.additional*(1-VE$delta[4])
 NL.omicron = data$NL.unvax*(1-VE$omicron[1]) + data$NL.partial*(1-VE$omicron[2]) + data$NL.full*(1-VE$omicron[3]) + data$NL.additional*(1-VE$omicron[4])
 
-PIs.NPIs = data.frame(date = data$date, masks, NL.original, NL.alpha, NL.delta, NL.omicron)
+PIs.NPIs = data.frame(date = data$date, NPIs=NPIs$stringency/100, NL.original, NL.alpha, NL.delta, NL.omicron)
 
-g.NPIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
-  geom_line(aes(y = 1-masks), col="black")+
-  scale_x_date(breaks = date_breaks("2 month"),
-               labels = date_format("%b %Y"))+
-  xlab("") +
-  ylab("Strength")+
-  ggtitle("Non-pharmaceutical")+
-  ylim(c(0,1))+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+n.original = data$n*(T.original$unvax+T.original$partial+T.original$full+T.original$additional)
+n.alpha = data$n*(T.alpha$unvax+T.alpha$partial+T.alpha$full+T.alpha$additional)
+n.delta = data$n*(T.delta$unvax+T.delta$partial+T.delta$full+T.delta$additional)
+n.omicron = data$n*(T.omicron$unvax+T.omicron$partial+T.omicron$full+T.omicron$additional)
 
-g.PIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
-  geom_line(aes(y = NL.original), col="grey")+
-  geom_line(aes(y = NL.alpha), col=palette.colors(4)[4])+
-  geom_line(aes(y = NL.delta), col=palette.colors(3)[3])+
-  geom_line(aes(y = NL.omicron), col=palette.colors(7)[7])+
-  scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
-  ylab("prob. of symptomatic infection")+
-  xlab("")+
-  ggtitle("Pharmaceutical")+
-  annotate("text", x = as.Date("2021-12-10"), y = .85, label = "BA.1", col=palette.colors(7)[7])+
-  annotate("text", x = as.Date("2021-08-20"), y = .6, label = "Delta", col=palette.colors(3)[3])+
-  annotate("text", x = as.Date("2021-03-20"), y = .88, label = "Alpha", col=palette.colors(4)[4])+
-  #annotate("text", x = as.Date("2021-03-01"), y = .9, label = "Original", col = "grey")+
-  ylim(c(0,1))+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
+n.variant = data.frame(date = data$date, original = n.original, alpha = n.alpha, delta = n.delta, omicron = n.omicron)
+n.variant$original = c(n.variant$original[1:6], rollmean(n.variant$original, 7))
+n.variant$alpha = c(n.variant$alpha[1:6], rollmean(n.variant$alpha, 7))
+n.variant$delta = c(n.variant$delta[1:6], rollmean(n.variant$delta, 7))
+n.variant$omicron = c(n.variant$omicron[1:6], rollmean(n.variant$omicron, 7))
 
-g.NPIs + g.PIs +plot_annotation(tag_levels = 'A', title = "NL community measures",theme = theme(plot.title = element_text(hjust = 0.5,face = "bold")))
-ggsave("community.png", width = 8, height=4)
-
-# Transmissibility advantange of variants
-delta.trans = .037 # reference value
+## TRANSMISSION
+base.trans = .1
+delta.trans = 1 # reference value
 omicron.trans = delta.trans
 alpha.trans =delta.trans/1.97
 original.trans = alpha.trans/1.5 #correction for variant
 
-## Estimate the number of travellers when the alpha variant occurred
-# (divided by .5 because masks were mandatory)
-alpha.travellers = (1+c)*sum(data$n*data$alpha)/masks1
-
-
-# Spillover prob from a traveller that is infected with a given variant (and vax status)
-p.original = data.frame(date = data$date,unvax=m.unvax.original*NL.original, partial=m.1.original*NL.original, full =m.2.original*NL.original, additional = m.2.original*NL.original)%>%
-  mutate(total = unvax+partial+full+additional)
-p.alpha = data.frame(date = data$date,unvax = m.unvax.alpha*NL.alpha, partial = m.1.alpha*NL.alpha, full = m.2.alpha*NL.alpha, additional = m.2.alpha*NL.alpha)%>%
-  mutate(total = unvax+partial+full+additional)
-p.delta = data.frame(date = data$date, unvax = m.unvax.delta*NL.delta, partial = m.1.delta*NL.delta, full = m.2.delta*NL.delta, additional = m.2.delta*NL.delta)%>%
-  mutate(total = unvax+partial+full+additional)
-p.omicron = data.frame(date = data$date,unvax = m.unvax.omicron*NL.omicron, partial = m.1.omicron*NL.omicron, full = m.2.omicron*NL.omicron, additional = m.2.omicron*NL.omicron)%>%
-  mutate(total = unvax+partial+full+additional)
-
-# Clean data from actual community outbreaks
-community.outbreaks = data.frame(date= data$date, community = data$COMMUNITY)
-ymax=-.05*7
-ymin=-.075*7
-community.outbreaks$community[which(community.outbreaks$community<=5)]=ymin
-community.outbreaks$community[which(community.outbreaks$community>5)]=ymax
-community.alpha = community.outbreaks%>%
-  filter(date<"2021-05-01")%>%
-  rename(alpha=community)
-community.delta= community.outbreaks%>%
-  filter(date>="2021-05-01"&date<="2021-12-01")%>%
-  rename(delta=community)
-community.omicron= community.outbreaks%>%
-  filter(date>="2021-12-01")%>%
-  rename(omicron=community)
-community.outbreaks=left_join(community.outbreaks, community.alpha)%>%
-  left_join(community.delta)%>%
-  left_join(community.omicron)
-community.outbreaks[is.na(community.outbreaks)]=ymin
-
-g.original =ggplot(p.original,aes(as.Date(date),group=1)) +
-  geom_line(aes(y = full), col=palette.colors(2)[2])+
-  geom_line(aes(y = partial), col="darkorchid")+
-  geom_line(aes(y = unvax), col="grey")+
-  scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
-  xlab("") +
-  ylab("probability")+
-  ggtitle("Original variant")+
-  #coord_cartesian(ylim=c(0, 25))+
-  annotate("text", x = as.Date("2021-12-07"), y = 0.75, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
-  annotate("text", x = as.Date("2021-06-23"), y = 0.75, label = "Reopening", angle=90, col  ="darkgrey")+
-  geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
-  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  #annotate("text", x = as.Date("2021-12-24"), y = .75, label = "+1", col = "black", fontface=2)+
-  theme_classic() + theme(axis.title.x=element_blank(),
-                          axis.text.x=element_blank(),
-                          axis.ticks.x=element_blank(), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
-
-g.omicron =ggplot(p.omicron,aes(as.Date(date),group=1)) +
-  geom_line(aes(y = additional), col="dodgerblue")+
-  geom_line(aes(y = full), col=palette.colors(2)[2])+
-  geom_line(aes(y = partial), col="darkorchid")+
-  geom_line(aes(y = unvax), col="grey")+
-  annotate("text", x = as.Date("2021-11-01"), y = .05, label = "2+ doses", fontface=2, col = palette.colors(2)[2])+
-  annotate("text", x = as.Date("2021-09-01"), y = .05, label = "1 dose", fontface=2, col ="darkorchid")+
-  annotate("text", x = as.Date("2021-06-01"), y = .05, label = "0 doses", col = "grey", fontface=2)+
-  scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
-  annotate("text", x = as.Date("2021-12-07"), y = 0.05, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
-  annotate("text", x = as.Date("2021-06-23"), y = 0.05, label = "Reopening", angle=90, col  ="darkgrey")+
-  geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, .05)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
-  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, .05)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  xlab("") +
-  ylab("probability")+
-  ggtitle("Omicron variant")+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
-
-g.alpha =ggplot(p.alpha,aes(as.Date(date),group=1)) +
-  geom_line(aes(y = additional), col="dodgerblue")+
-  geom_line(aes(y = full), col=palette.colors(2)[2])+
-  geom_line(aes(y = partial), col="darkorchid")+
-  geom_line(aes(y = unvax), col="grey")+
-  scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
-  annotate("text", x = as.Date("2021-12-07"), y = 0.2, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
-  annotate("text", x = as.Date("2021-06-23"), y = 0.2, label = "Reopening", angle=90, col  ="darkgrey")+
-  geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 2)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
-  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 2)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  xlab("") +
-  ylab("probability")+
-  ggtitle("Alpha variant")+
-  theme_classic() + theme(axis.title.x=element_blank(),
-                          axis.text.x=element_blank(),
-                          axis.ticks.x=element_blank(), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
-
-g.delta =ggplot(p.delta,aes(as.Date(date),group=1)) +
-  geom_line(aes(y = additional), col="dodgerblue")+
-  geom_line(aes(y = full), col=palette.colors(2)[2])+
-  geom_line(aes(y = partial), col="darkorchid")+
-  geom_line(aes(y = unvax), col="grey")+
-  scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
-  annotate("text", x = as.Date("2021-12-07"), y = 0.2, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
-  annotate("text", x = as.Date("2021-06-23"), y = 0.2, label = "Reopening", angle=90, col  ="darkgrey")+
-  geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, .2)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
-  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, .2)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  xlab("") +
-  ylab("probability")+
-  ggtitle("Delta variant")+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
-
-
-# Expected number of travellers with a given variant (and vax status)
-n.original = data.frame(date = data$date, unvax = T.original$unvax*data$n, partial = T.original$partial*data$n, full = T.original$full*data$n, additional = T.original$additional*data$n)%>%
-  mutate(total = unvax+partial+full+additional)
-n.alpha = data.frame(date = data$date, unvax = T.alpha$unvax*data$n, partial = T.alpha$partial*data$n, full = T.alpha$full*data$n, additional = T.alpha$additional*data$n)%>%
-  mutate(total = unvax+partial+full+additional)
-n.delta = data.frame(date = data$date, unvax = T.delta$unvax*data$n, partial = T.delta$partial*data$n, full = T.delta$full*data$n, additional = T.delta$additional*data$n)%>%
-  mutate(total = unvax+partial+full+additional)
-n.omicron = data.frame(date = data$date, unvax = T.omicron$unvax*data$n, partial = T.omicron$partial*data$n, full = T.omicron$full*data$n, additional = T.omicron$additional*data$n)%>%
-  mutate(total = unvax+partial+full+additional)
-
-# Expected probability of at least one infection from each variant
-p1.original = 1 - (1-p.original$unvax)^(n.original$unvax*(1+c))*(1-p.original$partial)^(n.original$partial*(1+c))*(1-p.original$full)^(n.original$full*(1+c))*(1-p.original$additional)^(n.original$additional*(1+c))
-p1.alpha = 1 - (1-p.alpha$unvax)^(n.alpha$unvax*(1+c))*(1-p.alpha$partial)^(n.alpha$partial*(1+c))*(1-p.alpha$full)^(n.alpha$full*(1+c))*(1-p.alpha$additional)^(n.alpha$additional*(1+c))
-p1.delta = 1 - (1-p.delta$unvax)^(n.delta$unvax*(1+c))*(1-p.delta$partial)^(n.delta$partial*(1+c))*(1-p.delta$full)^(n.delta$full*(1+c))*(1-p.delta$additional)^(n.delta$additional*(1+c))
-p1.omicron = 1 - (1-p.omicron$unvax)^(n.omicron$unvax*(1+c))*(1-p.omicron$partial)^(n.omicron$partial*(1+c))*(1-p.omicron$full)^(n.omicron$full*(1+c))*(1-p.omicron$additional)^(n.omicron$additional*(1+c))
-p1.total = 1-(1-p1.original)*(1-p1.alpha)*(1-p1.delta)*(1-p1.omicron)
-
-p1 = data.frame(date = data$date, original = p1.original, alpha = p1.alpha, delta = p1.delta, omicron = p1.omicron, total=p1.total)
-p1$original = c(p1$original[1:6], rollmean(p1$original,7))
-p1$alpha = c(p1$alpha[1:6], rollmean(p1$alpha,7))
-p1$delta = c(p1$delta[1:6], rollmean(p1$delta,7))
-p1$omicron = c(p1$omicron[1:6], rollmean(p1$omicron,7))
-p1$total = c(p1$total[1:6], rollmean(p1$total,7))
-
 #Expected spillovers
-E.original = p.original$unvax*n.original$unvax + p.original$partial*n.original$partial + p.original$full*n.original$full + p.original$additional*n.original$additional
-E.alpha = p.alpha$unvax*n.alpha$unvax + p.alpha$partial*n.alpha$partial + p.alpha$full*n.alpha$full + p.alpha$additional*n.alpha$additional
-E.delta = p.delta$unvax*n.delta$unvax + p.delta$partial*n.delta$partial + p.delta$full*n.delta$full + p.delta$additional*n.delta$additional
-E.omicron = p.omicron$unvax*n.omicron$unvax + p.omicron$partial*n.omicron$partial + p.omicron$full*n.omicron$full + p.omicron$additional*n.omicron$additional
+E.original = base.trans*original.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.original)*(1+c)*(data$n)*(T.original$unvax*m.unvax+T.original$partial*m.1+T.original$full*m.2+T.original$additional*m.2)
+E.alpha = base.trans*alpha.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.alpha)*(data$n)*(1+c)*(T.alpha$unvax*m.unvax+T.alpha$partial*m.1+T.alpha$full*m.2+T.alpha$additional*m.2)
+E.delta = base.trans*delta.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.delta)*(data$n)*(1+c)*(T.delta$unvax*m.unvax+T.delta$partial*m.1+T.delta$full*m.2+T.delta$additional*m.2)
+E.omicron = base.trans*omicron.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.omicron)*(data$n)*(1+c)*(T.omicron$unvax*m.unvax+T.omicron$partial*m.1+T.omicron$full*m.2+T.omicron$additional*m.2)
 
 # Take rolling mean
 E.original = c(E.original[1:6], rollmean(E.original, 7))
@@ -524,6 +350,76 @@ E.delta = c(E.delta[1:6], rollmean(E.delta, 7))
 E.omicron = c(E.omicron[1:6], rollmean(E.omicron, 7))
 
 E.spillovers = data.frame(date = data$date, original = E.original, alpha = E.alpha, delta = E.delta, omicron = E.omicron, total = E.original+E.alpha+E.delta+E.omicron)
+
+
+
+### PLOTS
+g.var =ggplot(data,aes(as.Date(date),group=1)) +
+  geom_ribbon(aes(ymax=1, ymin=alpha+delta+omicron), fill="grey", alpha=0.3)+
+  geom_ribbon(aes(ymax = alpha+delta+omicron, ymin=alpha+delta), fill=palette.colors(7)[7], alpha=.8)+
+  geom_ribbon(aes(ymax = alpha+delta, ymin=alpha), fill=palette.colors(3)[3], alpha=.8)+
+  geom_ribbon(aes(ymax = alpha, ymin=0), fill=palette.colors(4)[4], alpha=.8)+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"),limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+  xlab("") +
+  ylab("proportion")+
+  ggtitle("Variants")+
+  #coord_cartesian(ylim=c(0, 25))+
+  annotate("text", x = as.Date("2021-12-10"), y = .9, label = "BA.1", fontface=2)+
+  annotate("text", x = as.Date("2021-09-01"), y = .6, label = "Delta", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-04-07"), y = .25, label = "Alpha", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-03-01"), y = .9, label = "Original", col = "black", fontface=2)+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
+
+g.vax =ggplot(data,aes(as.Date(date),group=1)) +
+  geom_ribbon(aes(ymax=1, ymin=1-CAN.unvax), fill="grey", alpha=0.3)+
+  geom_ribbon(aes(ymax = CAN.full+CAN.partial+CAN.additional, ymin=CAN.partial+CAN.full), fill="dodgerblue", alpha=.5)+
+  geom_ribbon(aes(ymax = CAN.partial+CAN.full, ymin=CAN.partial), fill=palette.colors(2)[2], alpha=.5)+
+  geom_ribbon(aes(ymax = CAN.partial, ymin=0), fill="darkorchid", alpha=.5)+
+  geom_line(aes(y=NL.full+NL.partial+NL.additional), col="green")+
+  geom_line(aes(y=NL.partial+NL.full), col=palette.colors(2)[2])+
+  geom_line(aes(y=NL.partial), col="darkorchid")+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"),limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+  xlab("") +
+  ylab("proportion")+
+  ggtitle("Vaccination")+
+  #coord_cartesian(ylim=c(0, 25))+
+  annotate("text", x = as.Date("2021-11-01"), y = .6, label = "2 doses", fontface=2)+
+  annotate("text", x = as.Date("2021-05-25"), y = .1, label = "1 dose", fontface=2)+
+  annotate("text", x = as.Date("2021-03-01"), y = .9, label = "0 doses", col = "black", fontface=2)+
+  annotate("text", x = as.Date("2021-12-24"), y = .75, label = "3", col = "black", fontface=2)+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
+
+g.NPIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
+  geom_line(aes(y = NPIs), col="black")+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+  xlab("") +
+  ylab("Stringency")+
+  ggtitle("NL community measures: non-pharmaceutical")+
+  ylim(c(0,1))+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), axis.text.y = element_text(size=rel(1.2)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2),face="bold"),axis.title = element_text(size=rel(1.2)))
+
+g.PIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
+  geom_line(aes(y = NL.original), col="grey")+
+  geom_line(aes(y = NL.alpha), col=palette.colors(4)[4])+
+  geom_line(aes(y = NL.delta), col=palette.colors(3)[3])+
+  geom_line(aes(y = NL.omicron), col=palette.colors(7)[7])+
+  scale_x_date(breaks = date_breaks("1 month"),
+               labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
+  ylab("prob. of symptom. infection")+
+  xlab("")+
+  ggtitle("NL community measures: pharmaceutical")+
+  annotate("text", x = as.Date("2021-12-10"), y = .85, label = "BA.1", col=palette.colors(7)[7])+
+  annotate("text", x = as.Date("2021-08-20"), y = .6, label = "Delta", col=palette.colors(3)[3])+
+  annotate("text", x = as.Date("2021-03-20"), y = .85, label = "Alpha", col=palette.colors(4)[4])+
+  #annotate("text", x = as.Date("2021-03-01"), y = .9, label = "Original", col = "grey")+
+  ylim(c(0,1))+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2), face="bold"),axis.title = element_text(size=rel(1.2)), axis.text.y = element_text(size=rel(1.2)))
+
+g.NPIs + g.PIs +plot_annotation(tag_levels = 'A', title = "NL community measures",theme = theme(plot.title = element_text(hjust = 0.5,face = "bold")))
+ggsave("community.png", width = 8, height=4)
 
 # 7 day rolling mean (daily) x 7 days/week
 g1 = ggplot(E.spillovers,aes(as.Date(date),group=1))+
@@ -538,17 +434,17 @@ g1 = ggplot(E.spillovers,aes(as.Date(date),group=1))+
   scale_x_date(breaks = date_breaks("1 month"),
                labels = date_format("%b %Y"),limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
   xlab("") +
-  scale_y_continuous(breaks=c(0,.5, 1,1.5))+
-  ylab("Mean spillovers, weekly")+
-  ggtitle("Newfoundland and Labrador: Traveller-community spillovers")+
+  scale_y_continuous(breaks=c(0,.5, 1,1.5,2))+
+  ylab("")+
+  ggtitle("Weekly expected number of infections spread from travellers to NL community members")+
   #geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, .2)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
   geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-12-21"), as.Date("2021-12-21")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  annotate("text", x = as.Date("2021-12-07"), y = .1*7, label = "BA.1",col = palette.colors(7)[7], fontface=2)+
-  annotate("text", x = as.Date("2021-09-01"), y = .033*7, label = "Delta", col = palette.colors(3)[3], fontface=2)+
-  annotate("text", x = as.Date("2021-05-05"), y = .02*7, label = "Alpha", col = palette.colors(4)[4], fontface=2)+
+  annotate("text", x = as.Date("2021-12-24"), y = .1*7, label = "BA.1",col = palette.colors(7)[7], fontface=2)+
+  annotate("text", x = as.Date("2021-09-01"), y = .45, label = "Delta", col = palette.colors(3)[3], fontface=2)+
+  annotate("text", x = as.Date("2021-05-05"), y = .25, label = "Alpha", col = palette.colors(4)[4], fontface=2)+
   annotate("text", x = as.Date("2021-07-09"), y = .08*7, label = "All", col = "black", fontface=2)+
   annotate("text", x = as.Date("2021-01-10"), y = -.03*7, label = "Community\noutbreaks", col = "black", size=3)+
   annotate("text", x = as.Date("2021-02-20"), y = -.03*7, label = "Mt. Pearl", col = palette.colors(4)[4], size=3)+
@@ -562,20 +458,7 @@ g1 = ggplot(E.spillovers,aes(as.Date(date),group=1))+
   annotate("text", x = as.Date("2021-07-26"), y = 0.15*7, label = "Step 2", angle=90, col  ="darkgrey")+
   annotate("text", x = as.Date("2021-09-25"), y = 0.15*7, label = "Step 2a", angle=90, col  ="darkgrey")+
   annotate("text", x = as.Date("2021-12-16"), y = 0.15*7, label = "Step 2b", angle=90, col  ="darkgrey")+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
-
-n.variant = data.frame(date = data$date, original = n.original$total, alpha = n.alpha$total, delta = n.delta$total, omicron = n.omicron$total)
-n.variant$original = c(n.variant$original[1:6], rollmean(n.variant$original, 7))
-n.variant$alpha = c(n.variant$alpha[1:6], rollmean(n.variant$alpha, 7))
-n.variant$delta = c(n.variant$delta[1:6], rollmean(n.variant$delta, 7))
-n.variant$omicron = c(n.variant$omicron[1:6], rollmean(n.variant$omicron, 7))
-
-p.variant = data.frame(date = data$date, original = p.original$total, alpha = p.alpha$total, delta = p.delta$total, omicron = p.omicron$total)
-p.variant$original = c(p.variant$original[1:6], rollmean(p.variant$original, 7))
-p.variant$alpha = c(p.variant$alpha[1:6], rollmean(p.variant$alpha, 7))
-p.variant$delta = c(p.variant$delta[1:6], rollmean(p.variant$delta, 7))
-p.variant$omicron = c(p.variant$omicron[1:6], rollmean(p.variant$omicron, 7))
-
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1.2)),axis.text.y = element_text(size=rel(1.2)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.5), face="bold"),axis.title = element_text(size=rel(1.2)))
 
 g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
   geom_ribbon(aes(ymax = alpha+delta+omicron+original, ymin=alpha+delta+original), fill=palette.colors(7)[7], alpha=.8)+
@@ -591,23 +474,13 @@ g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
   geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
   #geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   ylab("7-day rolling mean, daily")+
-  ggtitle("Travel-related cases")+
+  ggtitle("Importations to NL")+
   #coord_cartesian(ylim=c(0, .5))+
-  annotate("text", x = as.Date("2021-12-15"), y = 9, label = "BA.1", fontface=2, col = palette.colors(7)[7])+
+  annotate("text", x = as.Date("2021-12-07"), y = 9, label = "BA.1", fontface=2, col = palette.colors(7)[7])+
   annotate("text", x = as.Date("2021-10-01"), y = 2.5, label = "Delta", col =palette.colors(3)[3], fontface=2)+
   annotate("text", x = as.Date("2021-04-21"), y = 7, label = "Alpha", fontface=2, col=palette.colors(4)[4])+
-  annotate("text", x = as.Date("2021-01-15"), y = 1.4, label = "Original", col = "grey", fontface=2)+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
+  annotate("text", x = as.Date("2021-02-01"), y = 1.4, label = "Original", col = "grey", fontface=2)+
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2), face="bold"),axis.title = element_text(size=rel(1.2)),axis.text.y = element_text(size=rel(1.2)))
 
-g.omicron2 = g.omicron+
-  ggtitle("Per traveller - Omicron")+
-  theme(axis.title = element_text(size=rel(1)))+
-  ylab("Probability of a \ncommunity infection")
-  #scale_x_date(breaks = date_breaks("1 month"),
-               #labels = date_format("%b %Y"))
-
-#g.spillovers
-gout2 = (g.original+g.alpha)/(g.delta+g.omicron)
-ggsave("p_ijk.png", width = 8, height = 6)
-gout1 = g.var+g.n+g.vax+g1 + plot_annotation(tag_levels = 'A') + plot_layout(widths = c(1, 2))
-ggsave("~/Desktop/community-outbreak.png", width = 14, height = 8)
+gout1 = (g.n+g.PIs+g.NPIs)/g1 + plot_annotation(tag_levels = 'A', theme = theme(plot.title = element_text(hjust = 0.5,face = "bold")))+plot_layout(height = c(1, 2))
+ggsave("~/Desktop/community-outbreak.png", width = 14.5, height = 8)
