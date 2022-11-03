@@ -24,7 +24,7 @@ g1=ggplot(travel_wk,aes(as.Date(report_week),group=1)) +
                labels = date_format("%b %Y"))+
   coord_cartesian(ylim = c(0,m1))+
   xlab("") +
-  ylab("cases (weekly)")+
+  ylab("cases, weekly")+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
 return(g1)
 }
@@ -76,7 +76,8 @@ travel_related = data.frame(province=province, value = value, type = type)
 cb2 = c(cb[2], cb[3], cb[1], cb[5], cb[4], cb[6])
 g.sum = ggplot(travel_related, aes(x=reorder(province, rep(c(1,2,4,3,5,6),2))))+
   geom_bar(aes(y=value), stat="identity", fill = c(cb2,cb2), alpha = c(rep(1,6), rep(0.5, 6)),col="black", lty = c(rep(1,6), rep(3,6)))+theme_classic()+
-  xlab("")+ylab("total")+
+  xlab("")+ylab("Total")+
+  ggtitle("Travel-related cases: July 1, 2020 - May 31, 2021")+
   annotate("text", x = "NL", y = 350, label = "contacts", size=3)+
   annotate("text", x = "NL", y = 150, label = "importations", size=2.5)
 
@@ -122,13 +123,9 @@ daily.per.travel$percent.travel[daily.per.travel$percent.travel>100]=100
 
 g.per = ggplot(daily.per.travel, aes(x=reorder(province, c(NL.order, NS.order, PE.order, NB.order, NT.order, YT.order)), y=percent.travel)) + 
   geom_jitter(position=position_jitter(0.2), col = c(NL.col, NS.col, PE.col, NB.col, NT.col, YT.col), cex=1)+
-  ylab("% travel-related (daily)")+
+  ylab("% travel-related, daily")+
   xlab("")+
   stat_summary(fun = "median", bg = c(cb[2], cb[3], cb[5], cb[1], cb[4], cb[6]), col = c(cb[2], cb[3], cb[5], cb[1], cb[4], cb[6]),cex = 8,pch=21, geom = "point",alpha=0.5)+theme_classic()
-  
-### All plots together
-(g.NL+g.NS+g.PEI)/(g.NB+g.NWT+g.YT)+ plot_annotation(tag_levels = 'A')
-ggsave("travel-related.png", height=8, width=12)
 
 g.per = ggplot(daily.per.travel, aes(x=reorder(province, c(NL.order, NS.order, PE.order, NB.order, NT.order, YT.order)), y=percent.travel)) + 
   ggdist::stat_halfeye(
@@ -152,10 +149,12 @@ g.per = ggplot(daily.per.travel, aes(x=reorder(province, c(NL.order, NS.order, P
   coord_cartesian(xlim = c(1.2, NA), clip = "off")+
   ylab("% daily")+
   xlab("")+theme_classic()+
-  ggtitle("Travel-related cases: July 1, 2020 - May 31, 2021")+
-  theme(plot.title = element_text(vjust=7, hjust = .4))
-        
-g.per/g.sum+ plot_annotation(tag_levels = 'A')
-ggsave("travel-related2.png", width=6)
+  ggtitle("Travel-related cases: July 1, 2020 - May 31, 2021")
+
+### All plots together
+(g.NL+g.NS+g.PEI)/(g.NB+g.NWT+g.YT)/(g.per+g.sum)+ plot_annotation(tag_levels = 'A')
+ggsave("travel-related.png", height=8, width=12) 
+       
+
 
 
