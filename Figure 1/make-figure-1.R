@@ -5,6 +5,7 @@ library(bbmle)
 library(dplyr)
 library(imputeTS)
 library(patchwork)
+library(ggridges)
 
 ## Color map
 cb <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
@@ -126,5 +127,35 @@ g.per = ggplot(daily.per.travel, aes(x=reorder(province, c(NL.order, NS.order, P
   stat_summary(fun = "median", bg = c(cb[2], cb[3], cb[5], cb[1], cb[4], cb[6]), col = c(cb[2], cb[3], cb[5], cb[1], cb[4], cb[6]),cex = 8,pch=21, geom = "point",alpha=0.5)+theme_classic()
   
 ### All plots together
-(g.NL+g.NS+g.PEI)/(g.NB+g.NWT+g.YT)/(g.per+g.sum)+ plot_annotation(tag_levels = 'A')
-ggsave("travel-related.png", height = 8)
+(g.NL+g.NS+g.PEI)/(g.NB+g.NWT+g.YT)+ plot_annotation(tag_levels = 'A')
+ggsave("travel-related.png", height=8, width=12)
+
+g.per = ggplot(daily.per.travel, aes(x=reorder(province, c(NL.order, NS.order, PE.order, NB.order, NT.order, YT.order)), y=percent.travel)) + 
+  ggdist::stat_halfeye(
+    adjust = .5, 
+    width = .6, 
+    .width = 0,
+    alpha=0.5,
+    justification = -.3, 
+    point_colour = NA, fill=c(rep(cb[2],502), rep(cb[3],502), rep(cb[5],502), rep(cb[1],502), rep(cb[4],502), rep(cb[6],502))) + 
+  geom_boxplot(
+    width = .25, alpha=0.2,
+    outlier.shape = NA,color = c(cb[2], cb[3], cb[5], cb[1], cb[4], cb[6]),fill = c(cb[2], cb[3], cb[5], cb[1], cb[4], cb[6])
+  ) +
+  geom_point(
+    size = 1.3,
+    alpha = .5,colour = c(NL.col, NS.col, PE.col, NB.col, NT.col, YT.col),
+    position = position_jitter(
+      seed = 1, width = .1
+    )
+  ) + 
+  coord_cartesian(xlim = c(1.2, NA), clip = "off")+
+  ylab("% daily")+
+  xlab("")+theme_classic()+
+  ggtitle("Travel-related cases: July 1, 2020 - May 31, 2021")+
+  theme(plot.title = element_text(vjust=7, hjust = .4))
+        
+g.per/g.sum+ plot_annotation(tag_levels = 'A')
+ggsave("travel-related2.png", width=6)
+
+
