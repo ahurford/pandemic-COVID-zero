@@ -16,6 +16,7 @@ PHAC.data <- read.csv('https://raw.githubusercontent.com/ahurford/covid-nl/maste
 PHAC.data <- dplyr::select(PHAC.data,date,numtoday,numactive,prname)%>%
   mutate(report_week = as.Date(cut(as.Date(date),"week", start.on.monday = F)))%>%
   distinct()
+
 ## These datasets are inidividual-level from the COVID-19 Canada Open data working group. They give travel-related
 # cases. The are large files.
 CCODWG.2020=read.csv('https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/retired_datasets/individual_level/cases_2020.csv', fill=TRUE)
@@ -379,3 +380,7 @@ write.csv(active, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pand
 # (4) Datasets to validate the number of travel-related cases reported in the CCODWG data
 write.csv(NL.validation, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL_validation.csv")
 write.csv(NB.validation, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NB_validation.csv")
+
+PHAC.data <- read.csv('https://raw.githubusercontent.com/ahurford/covid-nl/master/covid19-download.csv')
+PHAC.data <- PHAC.data%>%filter(prname=="Canada")%>%filter(as.Date(date)<as.Date("2022-01-01"))
+tail(PHAC.data$numdeaths,1)

@@ -135,10 +135,10 @@ g.per = ggplot(daily.per.travel, aes(x=reorder(province, c(NL.order, NS.order, P
     alpha=0.5,
     justification = -.3, 
     point_colour = NA, fill=c(rep(cb[2],502), rep(cb[3],502), rep(cb[5],502), rep(cb[1],502), rep(cb[4],502), rep(cb[6],502))) + 
-  geom_boxplot(
-    width = .25, alpha=0.2,
-    outlier.shape = NA,color = c(cb[2], cb[3], cb[5], cb[1], cb[4], cb[6]),fill = c(cb[2], cb[3], cb[5], cb[1], cb[4], cb[6])
-  ) +
+  #geom_boxplot(
+    #width = .25, alpha=0.2,
+    #outlier.shape = NA,color = c(cb[2], cb[3], cb[5], cb[1], cb[4], cb[6]),fill = c(cb[2], cb[3], cb[5], cb[1], cb[4], cb[6])
+  #) +
   geom_point(
     size = 1.3,
     alpha = .5,colour = c(NL.col, NS.col, PE.col, NB.col, NT.col, YT.col),
@@ -155,6 +155,4 @@ g.per = ggplot(daily.per.travel, aes(x=reorder(province, c(NL.order, NS.order, P
 (g.NL+g.NS+g.PEI)/(g.NB+g.NWT+g.YT)/(g.per+g.sum)+ plot_annotation(tag_levels = 'A')
 ggsave("travel-related.png", height=8, width=12) 
        
-
-
 
