@@ -155,4 +155,6 @@ g.per = ggplot(daily.per.travel, aes(x=reorder(province, c(NL.order, NS.order, P
 (g.NL+g.NS+g.PEI)/(g.NB+g.NWT+g.YT)/(g.per+g.sum)+ plot_annotation(tag_levels = 'A')
 ggsave("travel-related.png", height=8, width=12) 
        
+daily.per.travel%>%group_by(province)%>% 
+  summarise(Mean=mean(percent.travel),Median=median(percent.travel))
 

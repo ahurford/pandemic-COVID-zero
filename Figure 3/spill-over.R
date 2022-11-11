@@ -16,8 +16,6 @@ cb = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
 # Travel-related cases arriving in NL, n (source: NLCHI data)
 n <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL-travel.csv')[,-1]%>%
   rename(date=REPORTED_DATE)%>%filter(date<"2021-12-25")
-# close contacts per traveller
-c = sum(n$CLOSE_CONTACT)/sum(n$TRAVEL)
 n <- data.frame(date=n$date, n = n$TRAVEL, c=n$CLOSE_CONTACT)
 n$date <- as.Date(n$date)
 
@@ -118,6 +116,16 @@ data <- left_join(data,omicron)
 data <- var.interp()%>%rename(omicron = freq)%>%
   mutate(original = round(1- omicron - delta-alpha,2))
 # rounding is to remove -ve numbers
+# contacts from travellers:
+contacts.data = inner_join(n, data.frame(date=data$date,original = data$original,alpha=data$alpha,delta=data$delta,omicron=data$omicron))%>%filter(n>0)
+c.original = filter(contacts.data, original>0.01) %>% mutate(contacts.per = c/n)
+c.original = mean(c.original$contacts.per)
+c.alpha = filter(contacts.data, alpha>0.01) %>% mutate(contacts.per = c/n)
+c.alpha = mean(c.alpha$contacts.per)
+c.delta = filter(contacts.data, delta>0.01) %>% mutate(contacts.per = c/n)
+c.delta = mean(c.delta$contacts.per)
+c.omicron = filter(contacts.data, omicron>0.01) %>% mutate(contacts.per = c/n)
+c.omicron = mean(c.omicron$contacts.per)
 
 ### intervention data: https://www.bankofcanada.ca/markets/market-operations-liquidity-provision/covid-19-actions-support-economy-financial-system/covid-19-stringency-index/
 interventions = read.csv("https://raw.githubusercontent.com/ahurford/pandemic-COVID-zero/main/data/COVID-19_STRINGENCY_INDEX.csv", skip = 26)
@@ -167,99 +175,80 @@ T.omicron = T.omicron1/T.sum
 
 test1=rowSums(T.original+T.alpha+T.delta+T.omicron)
 
-## Self-isolation until negative test
-# Another restriction that has been applied to travellers into NL is self-isolation until a negative test result.
-# We assume this corresponds to 1-day of self-isolation, a test on day 0 of entering the province, and that days
-# since exposure of arriving travellers are uniformly distributed from 0 to 10 days.  We assume that infectivity
-# as a function of days since exposure follows a Weibull distribution with a shape parameter of 2.83 and a scale
-# parameter of 5.67 (Ferretti et al. 2020). After 1 day of self-isolation, the distribution of days since
-# exposure is uniform from 1 to 11 days. Summing the Weibull distribution evaluated for these days since exposure
-# gives the exposure to the community.
-
-# A restriction is a test on day 7, 8, or 9 and isolation until a negative test result. We assume the test
-# occurs on day 8 and the traveller exits self-isolation on day 9, if negative. By day 8, many travellers
-# are no longer infective as some were several days post-exposure on arrival. More precisely, and as implied
-# by the Weibull distribution assumption, after 8 days of self-isolation 11% of infectivity remains.
-# When the test occurs on day 8, the probability of a false negative test is estimated as 0.45.
-# Therefore, the probability that infectious travellers are released into the community given day
-# 7-9 testing and self-isolation until a negative test result is 0.45x0.89x(variant and mask effects)
-# The requirement of testing more than offsets the reduced duration of self-isolation, such that
-# the probability an infected traveller is released into the community with testing on day 8 is
-# less than that of 14-day self-isolation.
-
-# Infectivity on each day:
+# Self-isolation and testing
+# Infectivity on each day based on Ferreti
 #dweibull(seq(0,10), 2.83, scale = 5.67, log = FALSE)
 
-# Infectivity remaining after self-isolating for x-days
-# Assuming uniform [0,10] days since infection on arrival
-# Assumes 70% compliance with self-isolation
-inf.iso = function(x){
-  compl = 0.7
-  y = 0
-  for(i in seq(0,10)){
-    y = sum(0.7*dweibull(seq(i+x,100), 2.83, scale = 5.67, log = FALSE)+0.3*dweibull(seq(i,100), 2.83, scale = 5.67, log = FALSE))+y
-  }
-  # To get the mean
-  y=y/11
-}
-
+# where i is the number of days exposure was prior to arrival
+# t is the day of a test.
 # The probability of a true positive when days since exposure is
 # uniformly distribution from 0 to 10 is the mean of $t$, where $t_i$ is the probability of testing positive
 # given infection $i$ days ago:
 
 t.sens <- c(0, 0.05, .1, .55, .78,.77,.726, .682, .638, .594, .55, .49, .43, .37, .31, .25, .22, .19, .16, .13, .1, .09, .08, .07, 0.06, .05)
 
-# Infectivity remaining after self-isolating for x-days and a test on day t
-# Assuming uniform [0,10] days since infection on arrival
-inf.iso.test = function(x,t){
-  y = 0
+inf.fun = function(x,t){
+  incr = 0.1
+  L = 40
+  compl=0.7
+  exposure <- seq(0,L, incr)
+  ysum=NULL
   for(i in seq(0,10)){
-    y = sum(0.7*dweibull(seq(i+x,100), 2.83, scale = 5.67, log = FALSE)+0.3*dweibull(seq(i,100), 2.83, scale = 5.67, log = FALSE))*(1-t.sens[i+t+1])+y
+    seq1 <- rep(0,length(exposure))
+    seq2 <-rep(0,length(exposure))
+    # if compliant with self-isolation
+  j = min(which(exposure>=(i+x)))
+  seq1[j:length(seq1)] = compl*dweibull(exposure[j:length(seq1)], 2.83, scale = 5.67, log = FALSE)
+  if((i+t+1)<(length(t.sens)-1)){
+  #   # A false negative when the test is administered on day i+t of the infection
+    seq1 = seq1*(1-t.sens[(i+t+1)])
   }
-  # To get the mean
-  y=y/11
+  ysum[i+1]=sum(seq1[which(exposure>=i)])*incr
+  j1 = min(which(exposure>=(i)))
+  # Non-compliance
+  seq2[j1:length(seq2)] = (1-compl)*dweibull(exposure[j1:length(seq2)], 2.83, scale = 5.67, log = FALSE)
+  ysum[i+1]=sum(seq2[which(exposure>=i)])*incr+ysum[i+1]
+  }
+  ymean = mean(ysum)
 }
 
 L=length(data$date)
 
 ## Restrictions for unvaccinated travellers
-m.unvax = rep(inf.iso(14),L)
+m.unvax = rep(inf.fun(14,100),L)
 # on August 1, test on day 8 + isolation to negative for unvaccinated
 i = which(data$date=="2021-08-01")
-m.unvax[i:L] <- inf.iso.test(8,9)
+m.unvax[i:L] <- inf.fun(8,8)
 
 
 ## Restrictions for travellers with 1 dose
 # Same restrictions prior re-opening
-m.1 = rep(inf.iso(14),L)
+m.1 = rep(inf.fun(14,100),L)
 
 # July 1 - negative test step 1
 i = which(data$date=="2021-07-01")
-m.1[i:L] <- mean(1-t.sens[1:11])
+m.1[i:L] <- inf.fun(0,0)
 
 # August 1 - no measures
 i = which(data$date=="2021-08-01")
-m.1[i:L] <- 1
+m.1[i:L] <- inf.fun(0,100)
 # Sept 30 - same as unvaccinated
 i = which(data$date=="2021-09-30")
 m.1[i:L] <- m.unvax[i:L]
 
 ## Two dose travellers (same as 3-dose also)
 # Same restrictions as other travellers prior to reopening
-m.2 <- rep(inf.iso(14),L)
+m.2 <- rep(inf.fun(14,100),L)
 
 # No requirements after July 1.
 i = which(data$date=="2021-07-01")
-m.2[i:L] <- 1
+m.2[i:L] <- inf.fun(0,100)
 
 # Dec 21: 5 RAT and isolate for 5 days.
 # Since the study ends on Dec 24, the only impact
 # is due to self-isolation
 i = which(data$date=="2021-12-21")
-m.2[i:L] = inf.iso(1)
-m.2[(i+1):L] = inf.iso(2)
-m.2[(i+2):L]= inf.iso(3)
-m.2[(i+3):L] = inf.iso(4)
+m.2[i:L] = inf.fun(5,100)*.1
 
 traveller.measures = data.frame(date = data$date,m.unvax, m.1, m.2, m.3=m.2)
 
@@ -331,17 +320,17 @@ n.variant$delta = c(n.variant$delta[1:6], rollmean(n.variant$delta, 7))
 n.variant$omicron = c(n.variant$omicron[1:6], rollmean(n.variant$omicron, 7))
 
 ## TRANSMISSION
-base.trans = .1
+base.trans = .2
 delta.trans = 1 # reference value
-omicron.trans = delta.trans
+omicron.trans = delta.trans*1.51
 alpha.trans =delta.trans/1.97
-original.trans = alpha.trans/1.5 #correction for variant
+original.trans = alpha.trans/1.77 #correction for variant
 
 #Expected spillovers
-E.original = base.trans*original.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.original)*(1+c)*(data$n)*(T.original$unvax*m.unvax+T.original$partial*m.1+T.original$full*m.2+T.original$additional*m.2)
-E.alpha = base.trans*alpha.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.alpha)*(data$n)*(1+c)*(T.alpha$unvax*m.unvax+T.alpha$partial*m.1+T.alpha$full*m.2+T.alpha$additional*m.2)
-E.delta = base.trans*delta.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.delta)*(data$n)*(1+c)*(T.delta$unvax*m.unvax+T.delta$partial*m.1+T.delta$full*m.2+T.delta$additional*m.2)
-E.omicron = base.trans*omicron.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.omicron)*(data$n)*(1+c)*(T.omicron$unvax*m.unvax+T.omicron$partial*m.1+T.omicron$full*m.2+T.omicron$additional*m.2)
+E.original = base.trans*original.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.original)*(1+c.original)*(data$n)*(T.original$unvax*m.unvax+T.original$partial*m.1+T.original$full*m.2+T.original$additional*m.2)
+E.alpha = base.trans*alpha.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.alpha)*(data$n)*(1+c.alpha)*(T.alpha$unvax*m.unvax+T.alpha$partial*m.1+T.alpha$full*m.2+T.alpha$additional*m.2)
+E.delta = base.trans*delta.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.delta)*(data$n)*(1+c.delta)*(T.delta$unvax*m.unvax+T.delta$partial*m.1+T.delta$full*m.2+T.delta$additional*m.2)
+E.omicron = base.trans*omicron.trans*(1-NPIs$stringency/100)*(PIs.NPIs$NL.omicron)*(data$n)*(1+c.omicron)*(T.omicron$unvax*m.unvax+T.omicron$partial*m.1+T.omicron$full*m.2+T.omicron$additional*m.2)
 
 # Take rolling mean
 E.original = c(E.original[1:6], rollmean(E.original, 7))
@@ -484,3 +473,7 @@ g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
 
 gout1 = (g.n+g.PIs+g.NPIs)/g1 + plot_annotation(tag_levels = 'A', theme = theme(plot.title = element_text(hjust = 0.5,face = "bold")))+plot_layout(height = c(1, 2))
 ggsave("~/Desktop/community-outbreak.png", width = 14.5, height = 8)
+
+(g.var + g.vax)+ plot_annotation(tag_levels = 'A')
+ggsave("~/Desktop/vax_var.png", width = 10)
+

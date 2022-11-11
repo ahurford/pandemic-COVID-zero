@@ -8,8 +8,8 @@ betaSIR<-function(t,theta){
 
 #theta<-c(beta0,delta,alpha,changepoint,gamma,pi,omega,mu...)
 mpearl<-read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/mount_pearl.csv',header=T)
-theta<-list(beta0=0.35,delta=0.4,alpha=0.2,changepoint=10,gamma=1/10,pi=0.6,
-            omega=1/2,mu=0)
+#theta<-list(beta0=0.89,delta=0.4,alpha=0.2,changepoint=10,gamma=1/10,pi=0.6,
+#            omega=1/2,mu=0)
 
 #theta<-c(beta0,delta,changepoint,gamma,pi,omega,mu,...)
 sir.simula<-function(i0,theta,time.horizon){
@@ -34,7 +34,7 @@ sir.simula<-function(i0,theta,time.horizon){
                       deltaN1=dN1,deltaN2=dN2,deltaNc=deltaNc))
 }
 
-simulantro<-function(i0,theta,time.horizon,runs=500){
+simulantro<-function(i0,theta,time.horizon,runs=1000){
     risu<-data.frame()
     for(i in 1:runs){
         risu0<-sir.simula(i0,theta,time.horizon)
@@ -48,7 +48,7 @@ library(scales)
 library(patchwork)
 
 mpearl$time=seq(1,length(mpearl$newcases))
-theta<-list(beta0=0.89,delta=0.03,alpha=.325,changepoint=8,gamma=1/10,pi=0.6,
+theta<-list(beta0=0.887,delta=0.03,alpha=.325,changepoint=8,gamma=1/10,pi=0.6,
             omega=1/2,mu=0)
 mpframo<-simulantro(4,theta,dim(mpearl)[1])
 mAlpha<-with(mpframo,tapply(deltaNc,as.factor(time),mean))
@@ -57,19 +57,21 @@ mAlpha.max <-with(mpframo,tapply(deltaNc,as.factor(time),max))
 mObs<-data.frame(date=as.Date(mpearl$date), alpha = unname(mAlpha), alpha.min = unname(mAlpha.min), alpha.max = unname(mAlpha.max))
 
 thOrig<-theta
-thOrig$beta0<-theta$beta0/1.5
+# Alpha is 77% more transmissible
+thOrig$beta0<-theta$beta0/1.77
 mOrig<-simulantro(4,thOrig,dim(mpearl)[1])
 mOrig<-with(mOrig,tapply(deltaNc,as.factor(time),mean))
 mObs<-data.frame(mObs,OV = unname(mOrig))
 
 thDelta<-theta
-thDelta$beta0<-theta$beta0/1.5*1.97
+# Delta is 97% more transmissible than original
+thDelta$beta0<-theta$beta0/1.77*1.97
 mDelta<-simulantro(4,thDelta,dim(mpearl)[1])
 mDelta<-with(mDelta,tapply(deltaNc,as.factor(time),mean))
 mObs<-data.frame(mObs, Delta = unname(mDelta))
 
 thOmicron<-theta
-thOmicron$beta0<-theta$beta0/1.5*1.97
+thOmicron$beta0<-theta$beta0/1.77*2.97
 mOmicron<-simulantro(4,thOmicron,dim(mpearl)[1])
 mOmicron<-with(mOmicron,tapply(deltaNc,as.factor(time),mean))
 mObs<-data.frame(mObs, Omicron = unname(mOmicron))
@@ -85,10 +87,10 @@ g1=ggplot(mObs,aes(x=as.Date(date),group=1))+
     ylab('new reported cases (daily)')+
       scale_x_date(breaks = date_breaks("1 days"),
                    labels = date_format("%d %b"))+
-  coord_cartesian(ylim = c(0,200))+
+  coord_cartesian(ylim = c(0,150))+
   annotate("text", x = as.Date("2021-02-10"), y = 65, label = "Alpha", fontface=1, col=palette.colors(4)[4])+
-  annotate("text", x = as.Date("2021-02-15"), y = 170, label = "BA.1", fontface=1, col=palette.colors(7)[7])+
-  annotate("text", x = as.Date("2021-02-15"), y = 150, label = "Delta", fontface=1, col=palette.colors(3)[3])+
+  annotate("text", x = as.Date("2021-02-25"), y = 125, label = "BA.1", fontface=1, col=palette.colors(7)[7])+
+  annotate("text", x = as.Date("2021-02-15"), y = 60, label = "Delta", fontface=1, col=palette.colors(3)[3])+
   annotate("text", x = as.Date("2021-02-10"), y = 2, label = "Original", fontface=1, col="darkgrey")+
   ggtitle("Mt. Pearl, NL, 2021 - Variant scenarios")+
   xlab("Date of symptom onset")+
@@ -102,9 +104,9 @@ g1=ggplot(mObs,aes(x=as.Date(date),group=1))+
 
 x0<-seq(0,1,0.05)
 bAlpha<-theta$beta0*(x0+(1-x0)*.07)
-bWild<-bAlpha/1.5
-bDelta<-theta$beta0/1.5*1.97*(x0+(1-x0)*.12)
-bOmicron<-theta$beta0/1.5*1.97*(x0+(1-x0)*.91)
+bWild<-bAlpha/1.77
+bDelta<-theta$beta0/1.77*1.97*(x0+(1-x0)*.12)
+bOmicron<-theta$beta0/1.77*2.97*(x0+(1-x0)*.91)
 fsAlpha<-rep(NA,21)
 fsWild<-rep(NA,21)
 fsDelta<-rep(NA,21)
@@ -139,14 +141,13 @@ g2=ggplot(mm0,aes(x=full.vax,group=1))+
   geom_line(aes(y=OV), col ="darkgrey", lwd=1)+
   geom_hline(yintercept = sum(mpearl$newcases), lty = 2, col = palette.colors(4)[4])+
     ylab('Mean reported cases (after 27 days)')+
-  coord_cartesian(ylim = c(0,2000))+
+  coord_cartesian(ylim = c(0,6000))+
   ggtitle("Mt. Pearl, NL, 2021 - Vaccination scenarios")+
-  annotate("text", x = 65, y = 530, label = "472 cases in the Mt. Pearl outbreak", fontface=1, col=palette.colors(4)[4])+
-  annotate("text", x = 25, y = 260, label = "Alpha", fontface=1, col=palette.colors(4)[4])+
-  annotate("text", x = 100, y = 1350, label = "BA.1", fontface=1, col=palette.colors(7)[7])+
-  annotate("text", x = 21, y = 1000, label = "Delta", fontface=1, col=palette.colors(3)[3])+
+  annotate("text", x = 55, y = 700, label = "472 cases in the Mt. Pearl outbreak (Alpha variant)", fontface=1, col=palette.colors(4)[4])+
+  annotate("text", x = 95, y = 4200, label = "BA.1", fontface=1, col=palette.colors(7)[7])+
+  annotate("text", x = 5, y = 1000, label = "Delta", fontface=1, col=palette.colors(3)[3])+
   annotate("text", x = 5, y = 160, label = "Original", fontface=1, col="darkgrey")+
     xlab('% population with 2 doses of vaccine')+theme_classic()
 
-g1+g2+plot_annotation(tag_levels = 'A')
-ggsave(file='~/Desktop/mpearl2.png', width=10, height=5)
+g1/g2+plot_annotation(tag_levels = 'A')
+ggsave(file='~/Desktop/mpearl2.png', width=6, height=8)

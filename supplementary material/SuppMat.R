@@ -1,13 +1,16 @@
+
+t.sens <- c(0, 0.05, .1, .55, .78,.77,.726, .682, .638, .594, .55, .49, .43, .37, .31, .25, .22, .19, .16, .13, .1, .09, .08, .07, 0.06, .05)
+exposure2 = seq(0,length(t.sens)-1)
+data2 = data.frame(exposure = exposure2, sensitivity = t.sens)
 i = 0
 x = 5
-
+incr <- 0.1
 weibull.fun = function(i,x){
-incr = 0.1
-L = 20
+L = 40
 exposure <- seq(0,L, incr)
 seq1 <- rep(0,length(exposure))
-seq1[(i+x)*(1/incr)+1:length(seq1)] = dweibull(exposure[(i+x)*(1/incr)+1:length(seq1)], 2.83, scale = 5.67, log = FALSE)
-seq1 = head(seq1,length(exposure))
+j = min(which(exposure>=(i+x)))
+seq1[j:length(seq1)] = dweibull(exposure[j:length(seq1)], 2.83, scale = 5.67, log = FALSE)
 data = data.frame(exposure, seq1)
 }
 
@@ -82,6 +85,7 @@ g4=ggplot(data,aes(x=exposure-3,group=1)) +
 
 
 weibull.fun2 =function(x){
+  ysum=NULL
   for(i in seq(0,10)){
   y=weibull.fun(i,x)
   ysum[i+1]=sum(y$seq1[y$exposure>=i])*incr
@@ -99,10 +103,16 @@ for(i in seq(1,length(xvec))){
 data = data.frame(self.iso = xvec, inf = y)
 g5 = ggplot(data,aes(x=self.iso,group=1)) +
   geom_line(aes(y=inf))+
-  ylab("prop. infectivity remaining")+
+  ylab("prop. of infectivity remaining")+
   xlab("days of self-isolation")+
   xlim(c(0,12))+
   ggtitle("U[0,10] days exposure before entry")+theme_classic()+theme(plot.title=element_text(size=rel(1)))
 
-g.full = (g1+g2)/(g3+g4)+g5+ plot_annotation(tag_levels = 'A')
-ggsave("supp_mat.png", height=10, width=8) 
+g6 = ggplot(data2,aes(x=exposure, y=sensitivity))+
+  geom_line()+
+  geom_point()+
+  ggtitle("PCR test sensitivity")+xlab("days since exposure")+theme_classic()+theme(plot.title=element_text(size=rel(1)))
+  
+
+g.full = (g1+g2)/(g3+g4)/(g5+g6)+ plot_annotation(tag_levels = 'A')
+ggsave("~/Desktop/supp_mat.png", height=10, width=8) 
