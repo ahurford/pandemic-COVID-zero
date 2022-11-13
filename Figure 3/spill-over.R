@@ -256,8 +256,12 @@ traveller.measures = data.frame(date = data$date,m.unvax, m.1, m.2, m.3=m.2)
 g.travel.measures =ggplot(traveller.measures,aes(as.Date(date),group=1)) +
   geom_line(aes(y = m.unvax), col="grey")+
   geom_line(aes(y = m.1), col="darkorchid")+
-  geom_line(aes(y = m.2), col=palette.colors(2)[2])+
   geom_line(aes(y = m.3), col="dodgerblue")+
+  geom_line(aes(y = m.2), col=palette.colors(2)[2])+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-12-21"), as.Date("2021-12-21")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   scale_x_date(breaks = date_breaks("1 month"),
                labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
   xlab("") +
@@ -276,28 +280,6 @@ travel.partial = m.1*(T.original$partial+T.alpha$partial+T.delta$partial+T.omicr
 travel.full = m.2*(T.original$full+T.alpha$full+T.delta$full+T.omicron$full)*data$CAN.full
 travel.additional = m.2*(T.original$additional+T.alpha$additional+T.delta$additional+T.omicron$additional)*data$CAN.additional
 traveller.measures2 = data.frame(date = data$date,unvax = travel.unvax ,partial=travel.partial,full=travel.full, additional = travel.additional)
-
-g.travel.measures2 =ggplot(traveller.measures2,aes(as.Date(date),group=1)) +
-  geom_line(aes(y = unvax), col="grey")+
-  geom_line(aes(y = partial), col="darkorchid")+
-  geom_line(aes(y = full), col=palette.colors(2)[2])+
-  geom_line(aes(y = additional), col="dodgerblue")+
-  scale_x_date(breaks = date_breaks("1 month"),
-               labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
-  xlab("") +
-  ylab("prob. of community\ncontact")+
-  ggtitle("Weighted by vaccination status of arrivals")+
-  #coord_cartesian(ylim=c(0, 25))+
-  annotate("text", x = as.Date("2021-10-01"), y = 0.9, label = "2 doses", col = palette.colors(2)[2])+
-  annotate("text", x = as.Date("2021-08-10"), y = 0.1, label = "1 dose", col  ="darkorchid")+
-  annotate("text", x = as.Date("2021-11-10"), y = 0.2, label = "3 doses", col  ="dodgerblue")+
-  #geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
-  #geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  #annotate("text", x = as.Date("2021-12-24"), y = .75, label = "+1", col = "black", fontface=2)+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1)),axis.title = element_text(size=rel(1.2)))
-
-g.travel.measures+g.travel.measures2+plot_annotation(tag_levels = 'A', title = "Impact of post-arrival travel restrictions",theme = theme(plot.title = element_text(hjust = 0.5,face = "bold")))
-ggsave("post_arrival.png", width = 8, height=4)
 
 ######### NL COMMUNITY MEASURES
 # Vulnerability of the NL community to different variants
@@ -431,9 +413,9 @@ g1 = ggplot(E.spillovers,aes(as.Date(date),group=1))+
   geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-12-21"), as.Date("2021-12-21")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  annotate("text", x = as.Date("2021-12-24"), y = .1*7, label = "BA.1",col = palette.colors(7)[7], fontface=2)+
+  annotate("text", x = as.Date("2021-12-10"), y = .1*7, label = "BA.1",col = palette.colors(7)[7], fontface=2)+
   annotate("text", x = as.Date("2021-09-01"), y = .45, label = "Delta", col = palette.colors(3)[3], fontface=2)+
-  annotate("text", x = as.Date("2021-05-05"), y = .25, label = "Alpha", col = palette.colors(4)[4], fontface=2)+
+  annotate("text", x = as.Date("2021-05-05"), y = .35, label = "Alpha", col = palette.colors(4)[4], fontface=2)+
   annotate("text", x = as.Date("2021-07-09"), y = .08*7, label = "All", col = "black", fontface=2)+
   annotate("text", x = as.Date("2021-01-10"), y = -.03*7, label = "Community\noutbreaks", col = "black", size=3)+
   annotate("text", x = as.Date("2021-02-20"), y = -.03*7, label = "Mt. Pearl", col = palette.colors(4)[4], size=3)+
@@ -446,7 +428,7 @@ g1 = ggplot(E.spillovers,aes(as.Date(date),group=1))+
   annotate("text", x = as.Date("2021-06-26"), y = 0.15*7, label = "Step 1", angle=90, col  ="darkgrey")+
   annotate("text", x = as.Date("2021-07-26"), y = 0.15*7, label = "Step 2", angle=90, col  ="darkgrey")+
   annotate("text", x = as.Date("2021-09-25"), y = 0.15*7, label = "Step 2a", angle=90, col  ="darkgrey")+
-  annotate("text", x = as.Date("2021-12-16"), y = 0.15*7, label = "Step 2b", angle=90, col  ="darkgrey")+
+  annotate("text", x = as.Date("2021-12-24"), y = 0.65, label = "Step 2b", angle=90, col  ="darkgrey")+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1.2)),axis.text.y = element_text(size=rel(1.2)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.5), face="bold"),axis.title = element_text(size=rel(1.2)))
 
 g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
