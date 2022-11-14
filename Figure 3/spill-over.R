@@ -249,15 +249,20 @@ m.2[i:L] <- inf.fun(0,100)
 # is due to self-isolation
 i = which(data$date=="2021-12-21")
 m.2[i:L] = inf.fun(5,100)*.1
+m.unvax[i:L] = min(inf.fun(5,100)*.1, m.unvax[i:L])
+m.1[i:L] = min(inf.fun(5,100)*.1, m.1[i:L])
 
 traveller.measures = data.frame(date = data$date,m.unvax, m.1, m.2, m.3=m.2)
 
 ####### PLOTS OF POST-ARRIVAL MEASURES
 g.travel.measures =ggplot(traveller.measures,aes(as.Date(date),group=1)) +
   geom_line(aes(y = m.unvax), col="grey")+
+  geom_ribbon(aes(ymax = m.unvax, ymin=0), fill="grey", alpha = 0.3)+
   geom_line(aes(y = m.1), col="darkorchid")+
+  geom_ribbon(aes(ymax = m.1, ymin=m.unvax), fill="darkorchid", alpha = 0.3)+
   geom_line(aes(y = m.3), col="dodgerblue")+
   geom_line(aes(y = m.2), col=palette.colors(2)[2])+
+  geom_ribbon(aes(ymax = m.2, ymin=m.1), fill=palette.colors(2)[2], alpha = 0.3)+
   geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
@@ -265,15 +270,20 @@ g.travel.measures =ggplot(traveller.measures,aes(as.Date(date),group=1)) +
   scale_x_date(breaks = date_breaks("1 month"),
                labels = date_format("%b %Y"), limits = c(as.Date("2021-04-01"), as.Date("2021-12-24")))+
   xlab("") +
-  ylab("prob. of community\ncontact")+
-  ggtitle("For a given vaccination status")+
+  ylab("")+
+  ggtitle("NL post-arrival travel restrictions")+
   #coord_cartesian(ylim=c(0, 25))+
-  annotate("text", x = as.Date("2021-09-01"), y = 0.05, label = "0 doses", col = "darkgrey", angle=0)+
-  #annotate("text", x = as.Date("2021-06-23"), y = 0.75, label = "Reopening", angle=90, col  ="darkgrey")+
+  annotate("text", x = as.Date("2021-05-01"), y = 0.05, label = "0 doses", col = "darkgrey", angle=0, fontface=2)+
+  annotate("text", x = as.Date("2021-09-01"), y = 0.3, label = "1 dose", col = "darkorchid", angle=0, fontface=2)+
+  annotate("text", x = as.Date("2021-11-01"), y = 0.3, label = "2+ doses", col = palette.colors(2)[2], angle=0, fontface=2)+
+  annotate("text", x = as.Date("2021-06-23"), y = 0.75, label = "Step 1", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-07-23"), y = 0.75, label = "Step 2", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-09-23"), y = 0.75, label = "Step 2a", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-12-08"), y = 0.75, label = "Step 2b", angle=90, col  ="darkgrey", fontface=2)+
   #geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
   #geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   #annotate("text", x = as.Date("2021-12-24"), y = .75, label = "+1", col = "black", fontface=2)+
-  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1)),plot.title=element_text(size=rel(1)),axis.title = element_text(size=rel(1.2)))
+  theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2), face="bold"),axis.title = element_text(size=rel(1.2)),axis.text.y = element_text(size=rel(1.2)))
 
 travel.unvax= m.unvax*(T.original$unvax+T.alpha$unvax+T.delta$unvax+T.omicron$unvax)*data$CAN.unvax
 travel.partial = m.1*(T.original$partial+T.alpha$partial+T.delta$partial+T.omicron$partial)*data$CAN.partial
@@ -363,6 +373,15 @@ g.vax =ggplot(data,aes(as.Date(date),group=1)) +
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
 
 g.NPIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
+  geom_ribbon(aes(ymax = NPIs, ymin = 0), fill="black", alpha =.1)+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-12-21"), as.Date("2021-12-21")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  annotate("text", x = as.Date("2021-06-23"), y = 0.78, label = "Step 1", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-07-23"), y = 0.78, label = "Step 2", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-09-23"), y = 0.8, label = "Step 2a", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-12-08"), y = 0.78, label = "Step 2b", angle=90, col  ="darkgrey", fontface=2)+
   geom_line(aes(y = NPIs), col="black")+
   scale_x_date(breaks = date_breaks("1 month"),
                labels = date_format("%b %Y"), limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
@@ -373,6 +392,18 @@ g.NPIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), axis.text.y = element_text(size=rel(1.2)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2),face="bold"),axis.title = element_text(size=rel(1.2)))
 
 g.PIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
+  #geom_ribbon(aes(ymax = NL.original, ymin = 0), fill="grey", alpha = 0.3)+
+  geom_ribbon(aes(ymax = NL.alpha, ymin = 0), fill=palette.colors(4)[4], alpha = 0.3)+
+  geom_ribbon(aes(ymax = NL.delta, ymin = NL.alpha), fill=palette.colors(3)[3],alpha=0.3)+
+  geom_ribbon(aes(ymax = NL.omicron, ymin = NL.delta), fill=palette.colors(7)[7], alpha = 0.3)+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-12-21"), as.Date("2021-12-21")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  annotate("text", x = as.Date("2021-06-23"), y = 0.25, label = "Step 1", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-07-23"), y = 0.25, label = "Step 2", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-09-23"), y = 0.65, label = "Step 2a", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-12-08"), y = 0.55, label = "Step 2b", angle=90, col  ="darkgrey", fontface=2)+
   geom_line(aes(y = NL.original), col="grey")+
   geom_line(aes(y = NL.alpha), col=palette.colors(4)[4])+
   geom_line(aes(y = NL.delta), col=palette.colors(3)[3])+
@@ -382,9 +413,9 @@ g.PIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
   ylab("prob. of symptom. infection")+
   xlab("")+
   ggtitle("NL community measures: pharmaceutical")+
-  annotate("text", x = as.Date("2021-12-10"), y = .85, label = "BA.1", col=palette.colors(7)[7])+
-  annotate("text", x = as.Date("2021-08-20"), y = .6, label = "Delta", col=palette.colors(3)[3])+
-  annotate("text", x = as.Date("2021-03-20"), y = .85, label = "Alpha", col=palette.colors(4)[4])+
+  annotate("text", x = as.Date("2021-12-1"), y = .85, label = "BA.1", col=palette.colors(7)[7], fontface=2)+
+  annotate("text", x = as.Date("2021-08-25"), y = .5, label = "Delta", col=palette.colors(3)[3], fontface=2)+
+  annotate("text", x = as.Date("2021-03-20"), y = .85, label = "Alpha", col=palette.colors(4)[4], fontface=2)+
   #annotate("text", x = as.Date("2021-03-01"), y = .9, label = "Original", col = "grey")+
   ylim(c(0,1))+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2), face="bold"),axis.title = element_text(size=rel(1.2)), axis.text.y = element_text(size=rel(1.2)))
@@ -394,6 +425,10 @@ ggsave("community.png", width = 8, height=4)
 
 # 7 day rolling mean (daily) x 7 days/week
 g1 = ggplot(E.spillovers,aes(as.Date(date),group=1))+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1.8)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1.8)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1.8)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-12-21"), as.Date("2021-12-21")), y = c(0, 1.8)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(aes(y=7*total), col = "black")+
   geom_line(aes(y=7*omicron), col=palette.colors(7)[7])+
   geom_line(aes(y=7*delta), col=palette.colors(3)[3])+
@@ -407,31 +442,32 @@ g1 = ggplot(E.spillovers,aes(as.Date(date),group=1))+
   xlab("") +
   scale_y_continuous(breaks=c(0,.5, 1,1.5,2))+
   ylab("")+
-  ggtitle("Weekly expected number of infections spread from travellers to NL community members")+
+  ggtitle("Expected weekly spillovers to NL community")+
   #geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, .2)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
-  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  geom_line(data = data.frame(x = c(as.Date("2021-12-21"), as.Date("2021-12-21")), y = c(0, 1.4)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   annotate("text", x = as.Date("2021-12-10"), y = .1*7, label = "BA.1",col = palette.colors(7)[7], fontface=2)+
   annotate("text", x = as.Date("2021-09-01"), y = .45, label = "Delta", col = palette.colors(3)[3], fontface=2)+
   annotate("text", x = as.Date("2021-05-05"), y = .35, label = "Alpha", col = palette.colors(4)[4], fontface=2)+
   annotate("text", x = as.Date("2021-07-09"), y = .08*7, label = "All", col = "black", fontface=2)+
-  annotate("text", x = as.Date("2021-01-10"), y = -.03*7, label = "Community\noutbreaks", col = "black", size=3)+
-  annotate("text", x = as.Date("2021-02-20"), y = -.03*7, label = "Mt. Pearl", col = palette.colors(4)[4], size=3)+
-  annotate("text", x = as.Date("2021-06-01"), y = -.03*7, label = "Lewisporte", col = palette.colors(3)[3], size=3)+
-  annotate("text", x = as.Date("2021-09-29"), y = -.03*7, label = "Baie Verte", col = palette.colors(3)[3], size=3)+
-  annotate("text", x = as.Date("2021-09-05"), y = -.03*7, label = "Labrador", col = palette.colors(3)[3], size=3)+
-  annotate("text", x = as.Date("2021-10-26"), y = -.03*7, label = "Burin Pen.", col = palette.colors(3)[3], size=3)+
-  annotate("text", x = as.Date("2021-12-18"), y = -.03*7, label = "St. John's", col = palette.colors(7)[7], size=3)+
+  annotate("text", x = as.Date("2021-01-10"), y = -.03*7, label = "Community\noutbreaks", col = "black", size=3, fontface=2)+
+  annotate("text", x = as.Date("2021-02-20"), y = -.03*7, label = "Mt. Pearl", col = palette.colors(4)[4], size=3, fontface=2)+
+  annotate("text", x = as.Date("2021-06-01"), y = -.03*7, label = "Lewisporte", col = palette.colors(3)[3], size=3, fontface=2)+
+  annotate("text", x = as.Date("2021-09-29"), y = -.03*7, label = "Baie Verte", col = palette.colors(3)[3], size=3, fontface=2)+
+  annotate("text", x = as.Date("2021-09-05"), y = -.03*7, label = "Labrador", col = palette.colors(3)[3], size=3, fontface=2)+
+  annotate("text", x = as.Date("2021-10-26"), y = -.03*7, label = "Burin Pen.", col = palette.colors(3)[3], size=3, fontface=2)+
+  annotate("text", x = as.Date("2021-12-18"), y = -.03*7, label = "St. John's", col = palette.colors(7)[7], size=3, fontface=2)+
   #annotate("text", x = as.Date("2021-12-10"), y = 0.15, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
-  annotate("text", x = as.Date("2021-06-26"), y = 0.15*7, label = "Step 1", angle=90, col  ="darkgrey")+
-  annotate("text", x = as.Date("2021-07-26"), y = 0.15*7, label = "Step 2", angle=90, col  ="darkgrey")+
-  annotate("text", x = as.Date("2021-09-25"), y = 0.15*7, label = "Step 2a", angle=90, col  ="darkgrey")+
-  annotate("text", x = as.Date("2021-12-24"), y = 0.65, label = "Step 2b", angle=90, col  ="darkgrey")+
+  annotate("text", x = as.Date("2021-06-26"), y = 1.4, label = "Step 1", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-07-26"), y = 1.4, label = "Step 2", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-09-25"), y = 1.4, label = "Step 2a", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-12-24"), y = 0.8, label = "Step 2b", angle=90, col  ="darkgrey", fontface=2)+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1.2)),axis.text.y = element_text(size=rel(1.2)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.5), face="bold"),axis.title = element_text(size=rel(1.2)))
 
 g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
+  geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
+  geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = "darkgrey")+
+  geom_line(data = data.frame(x = c(as.Date("2021-12-21"), as.Date("2021-12-21")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_ribbon(aes(ymax = alpha+delta+omicron+original, ymin=alpha+delta+original), fill=palette.colors(7)[7], alpha=.8)+
   geom_ribbon(aes(ymax = alpha+delta+original, ymin=alpha+original), fill=palette.colors(3)[3], alpha=.8)+
   geom_ribbon(aes(ymax = alpha+original, ymin=original), fill=palette.colors(4)[4], alpha=.8)+
@@ -440,9 +476,11 @@ g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
                labels = date_format("%b %Y"),limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
   #scale_y_continuous(trans='log2')+
   xlab("") +
-  annotate("text", x = as.Date("2021-12-09"), y = 5, label = "1st BA.1", col = palette.colors(7)[7], angle=90)+
+  annotate("text", x = as.Date("2021-06-23"), y = 7.5, label = "Step 1", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-07-23"), y = 7.5, label = "Step 2", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-09-23"), y = 7.5, label = "Step 2a", angle=90, col  ="darkgrey", fontface=2)+
+  annotate("text", x = as.Date("2021-12-09"), y = 5, label = "1st BA.1", col = palette.colors(7)[7], angle=90, fontface=2)+
   #annotate("text", x = as.Date("2021-06-23"), y = 5, label = "Reopening", angle=90, col  ="darkgrey")+
-  geom_line(data = data.frame(x = c(as.Date("2021-12-15"), as.Date("2021-12-15")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = palette.colors(7)[7])+
   #geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   ylab("7-day rolling mean, daily")+
   ggtitle("Importations to NL")+
@@ -453,8 +491,9 @@ g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
   annotate("text", x = as.Date("2021-02-01"), y = 1.4, label = "Original", col = "grey", fontface=2)+
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2), face="bold"),axis.title = element_text(size=rel(1.2)),axis.text.y = element_text(size=rel(1.2)))
 
-gout1 = (g.n+g.PIs+g.NPIs)/g1 + plot_annotation(tag_levels = 'A', theme = theme(plot.title = element_text(hjust = 0.5,face = "bold")))+plot_layout(height = c(1, 2))
-ggsave("~/Desktop/community-outbreak.png", width = 14.5, height = 8)
+gout1 = (g.n+g.travel.measures+g.PIs+g.NPIs)/g1 + plot_annotation(tag_levels = 'A', theme = theme(plot.title = element_text(hjust = 0.5,face = "bold")))
+#+plot_layout(height = c(1, 1, 2))
+ggsave("~/Desktop/community-outbreak.png", width = 12, height = 12)
 
 (g.var + g.vax)+ plot_annotation(tag_levels = 'A')
 ggsave("~/Desktop/vax_var.png", width = 10)
