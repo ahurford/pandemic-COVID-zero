@@ -3,7 +3,7 @@
 # Description: Produces data files travel-related cases per week to Atlantic
 #    Canada & territories from the COVID-19 Canada Open Data Working Group (CCODWG)
 #    Appends validation data for NB and NL
-#    Uses PHAC data source to record active cases per 10K people
+#    Uses PHAC data source to record new cases per 10K people
 #    CCODWG files are large
 #======================
 
@@ -11,11 +11,14 @@ library(dplyr)
 library(zoo)
 
 ## PULLING THE DATA FILES
-# This is to pull the data a copy of the PHAC data for active cases
+# This is to pull the data a copy of the PHAC data for new cases
 PHAC.data <- read.csv('https://raw.githubusercontent.com/ahurford/covid-nl/master/covid19-download.csv')
-PHAC.data <- dplyr::select(PHAC.data,date,numtoday,numactive,prname)%>%
+PHAC.data <- dplyr::select(PHAC.data,date,numtoday, prname)%>%
   mutate(report_week = as.Date(cut(as.Date(date),"week", start.on.monday = F)))%>%
   distinct()
+
+
+
 
 ## These datasets are inidividual-level from the COVID-19 Canada Open data working group. They give travel-related
 # cases. The are large files.
@@ -172,8 +175,8 @@ travel = full_join(NL.travel,NS.travel)%>%
   filter(date_report>="2020-07-01")
 
 
-## AV. WEEKLY ACTIVE CASES PER 10K PEOPLE FROM PHAC
-# Weekly active cases in all provinces per 10K people - to be used as explanatory variables
+## AV. WEEKLY NE CASES PER 10K PEOPLE FROM PHAC
+# Weekly new cases in all provinces per 10K people - to be used as explanatory variables
 #https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000901
 #Q1 2021
 NL.pop<-519664
@@ -188,45 +191,45 @@ AB.pop<-4431454
 BC.pop<-5163919
 
 
-active.fun = function(prov,pop){ 
-  active = filter(PHAC.data, prname==prov)%>%
-  mutate("active.per.10K" = 1e4*numactive/pop)%>%
-  dplyr::select(date,active.per.10K)%>%
+new.fun = function(prov,pop){ 
+  new.val = filter(PHAC.data, prname==prov)%>%
+  mutate("new.per.10K" = 1e4*numtoday/pop)%>%
+  dplyr::select(date,new.per.10K)%>%
   distinct()%>%
   arrange(date)%>%
     as.data.frame()
-  return(active)
+  return(new.val)
 }
 
-BC_active = active.fun("British Columbia", BC.pop)%>%
-  rename("BC_active"=active.per.10K)
-AB_active = active.fun("Alberta", AB.pop)%>%
-  rename("AB_active"=active.per.10K)
-SK_active = active.fun("Saskatchewan", SK.pop)%>%
-  rename("SK_active"=active.per.10K)
-MB_active = active.fun("Manitoba", MB.pop)%>%
-  rename("MB_active"=active.per.10K)
-ON_active = active.fun("Ontario", ON.pop)%>%
-  rename("ON_active"=active.per.10K)
-QC_active = active.fun("Quebec", QC.pop)%>%
-  rename("QC_active"=active.per.10K)
-NB_active = active.fun("New Brunswick", NB.pop)%>%
-  rename("NB_active"=active.per.10K)
-NS_active = active.fun("Nova Scotia", NS.pop)%>%
-  rename("NS_active"=active.per.10K)
+BC_new = new.fun("British Columbia", BC.pop)%>%
+  rename("BC_new"=new.per.10K)
+AB_new = new.fun("Alberta", AB.pop)%>%
+  rename("AB_new"=new.per.10K)
+SK_new = new.fun("Saskatchewan", SK.pop)%>%
+  rename("SK_new"=new.per.10K)
+MB_new = new.fun("Manitoba", MB.pop)%>%
+  rename("MB_new"=new.per.10K)
+ON_new = new.fun("Ontario", ON.pop)%>%
+  rename("ON_new"=new.per.10K)
+QC_new = new.fun("Quebec", QC.pop)%>%
+  rename("QC_new"=new.per.10K)
+NB_new = new.fun("New Brunswick", NB.pop)%>%
+  rename("NB_new"=new.per.10K)
+NS_new = new.fun("Nova Scotia", NS.pop)%>%
+  rename("NS_new"=new.per.10K)
 
-active = full_join(BC_active, AB_active)%>%
-  full_join(SK_active)%>%
-  full_join(MB_active)%>%
-  full_join(ON_active)%>%
-  full_join(QC_active)%>%
-  full_join(NB_active)%>%
-  full_join(NS_active)%>%
+new = full_join(BC_new, AB_new)%>%
+  full_join(SK_new)%>%
+  full_join(MB_new)%>%
+  full_join(ON_new)%>%
+  full_join(QC_new)%>%
+  full_join(NB_new)%>%
+  full_join(NS_new)%>%
   distinct()
 
-active$date=as.Date(active$date)
+new$date=as.Date(new$date)
 travel = rename(travel,date=date_report)
-travel = left_join(travel,active)
+travel = left_join(travel,new)
 
 
 importations3=function(province){
@@ -370,12 +373,12 @@ NL.validation[is.na(NL.validation)]=0
 write.csv(travel.wk, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/travel_wk.csv")
 write.csv(travel.day, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/travel_day.csv")
 
-# (2) Data to model travel-related cases to Atlantic Canada predicted from active cases per 10K
+# (2) Data to model travel-related cases to Atlantic Canada predicted from new cases per 10K
 # in other Canadian provinces. Do not include the validation datasets: NL.travel.2 and NB.travel.2 in this analysis
 write.csv(travel, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/travel.csv")
 
-# (3) Full data set of active cases per 10K which can be used for prediction outside the time range of the model described in (2) 
-write.csv(active, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/active.csv")
+# (3) Full data set of new cases per 10K which can be used for prediction outside the time range of the model described in (2) 
+write.csv(new, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/new.csv")
 
 # (4) Datasets to validate the number of travel-related cases reported in the CCODWG data
 write.csv(NL.validation, "~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL_validation.csv")

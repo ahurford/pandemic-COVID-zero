@@ -140,7 +140,7 @@ g2=ggplot(mm0,aes(x=full.vax,group=1))+
   geom_line(aes(y=omicron), col = palette.colors(7)[7],lwd=1)+
   geom_line(aes(y=OV), col ="darkgrey", lwd=1)+
   geom_hline(yintercept = sum(mpearl$newcases), lty = 2, col = palette.colors(4)[4])+
-    ylab('Mean reported cases (after 27 days)')+
+    ylab('Mean total reported cases after 27 days')+
   coord_cartesian(ylim = c(0,6000))+
   ggtitle("Mt. Pearl, NL, 2021 - Vaccination scenarios")+
   annotate("text", x = 55, y = 700, label = "472 cases in the Mt. Pearl outbreak (Alpha variant)", fontface=1, col=palette.colors(4)[4])+

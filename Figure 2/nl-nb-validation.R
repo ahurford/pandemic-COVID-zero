@@ -9,7 +9,7 @@ cb = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
 NL.travel <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NL_validation.csv')[-1]
 NB.travel <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NB_validation.csv')[,-1]
 CCODWG = read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/travel.csv')[,-1]
-active <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/active.csv')[,-1]%>%
+new <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/new.csv')[,-1]%>%
   filter(date<"2021-12-25")
 # Validation figures
 CCODWG_shift = tail(NB.travel$CCODWG,-1)
@@ -53,26 +53,26 @@ gNL.2 = ggplot(NL.travel, aes(diff)) +
   theme_classic()+theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(.8)))
 
 ######
-
-NL_travel = CCODWG$NL_travel
-ON2 = CCODWG$ON_active
-AB2 = CCODWG$AB_active
-NS2 = CCODWG$NS_active
-BC2 = CCODWG$BC_active
-QC2 = CCODWG$QC_active
-MB2 = CCODWG$MB_active
-SK2 = CCODWG$SK_active
-NB2 = CCODWG$NB_active
-
-
-mod = glm.cons(NL_travel ~ 0+ON2+AB2+NS2+QC2+BC2+SK2+NB2+MB2,cons=1,family = "poisson")
-mod = glm.cons(NL_travel ~ 0+NS2,cons=1,family = "poisson")
+NL_travel = tail(CCODWG$NL_travel,-13)
+ON2 = rollmean(CCODWG$ON_new,14)
+AB2 = rollmean(CCODWG$AB_new,14)
+NS2 = rollmean(CCODWG$NS_new,14)
+BC2 = rollmean(CCODWG$BC_new,14)
+QC2 = rollmean(CCODWG$QC_new,14)
+MB2 = rollmean(CCODWG$MB_new,14)
+SK2 = rollmean(CCODWG$SK_new,14)
+NB2 = rollmean(CCODWG$NB_new,14)
 
 
-NS = active$NS_active
-cNS = coef(mod)[1]
+mod = glm.cons(NL_travel ~ ON2+AB2+NS2+QC2+BC2+SK2+NB2+MB2,cons=1,family = "poisson")
+mod = glm.cons(NL_travel ~ NS2,cons=1,family = "poisson")
 
-n = data.frame(date = active$date, n = exp(cNS*NS))
+
+NS = tail(new$NS_new,-13)
+intcp = coef(mod)[1]
+cNS = coef(mod)[2]
+
+n = data.frame(date = tail(new$date,-13), n = exp(intcp+cNS*NS))
 
 NL.travel <- read.csv('~/Desktop/Work/Research/Research_Projects/2022/reopening/pandemic-COVID-zero/data/NLCHI_cases.csv')[-1]%>%
   rename(date = REPORTED_DATE)%>%
@@ -110,7 +110,7 @@ gNL.tot =ggplot(data,aes(as.Date(date),group=1)) +
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1.2)))
 
 gNL.tot
-ggsave("importation_NL.png", width = 10, height=5)
+ggsave("Desktop/importation_NL.png", width = 10, height=5)
 
 g=gNL.1+gNL.2+gNB.1 + gNB.2 
 g+plot_layout(widths = c(2, 1)) + plot_annotation(tag_levels = 'A') 
