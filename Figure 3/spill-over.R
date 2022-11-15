@@ -257,12 +257,12 @@ traveller.measures = data.frame(date = data$date,m.unvax, m.1, m.2, m.3=m.2)
 ####### PLOTS OF POST-ARRIVAL MEASURES
 g.travel.measures =ggplot(traveller.measures,aes(as.Date(date),group=1)) +
   geom_line(aes(y = m.unvax), col="grey")+
-  geom_ribbon(aes(ymax = m.unvax, ymin=0), fill="grey", alpha = 0.3)+
+  #geom_ribbon(aes(ymax = m.unvax, ymin=0), fill="grey", alpha = 0.3)+
   geom_line(aes(y = m.1), col="darkorchid")+
-  geom_ribbon(aes(ymax = m.1, ymin=m.unvax), fill="darkorchid", alpha = 0.3)+
+  #geom_ribbon(aes(ymax = m.1, ymin=m.unvax), fill="darkorchid", alpha = 0.3)+
   geom_line(aes(y = m.3), col="dodgerblue")+
   geom_line(aes(y = m.2), col=palette.colors(2)[2])+
-  geom_ribbon(aes(ymax = m.2, ymin=m.1), fill=palette.colors(2)[2], alpha = 0.3)+
+  #geom_ribbon(aes(ymax = m.2, ymin=m.1), fill=palette.colors(2)[2], alpha = 0.3)+
   geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
@@ -273,9 +273,9 @@ g.travel.measures =ggplot(traveller.measures,aes(as.Date(date),group=1)) +
   ylab("")+
   ggtitle("NL post-arrival travel restrictions")+
   #coord_cartesian(ylim=c(0, 25))+
-  annotate("text", x = as.Date("2021-05-01"), y = 0.05, label = "0 doses", col = "darkgrey", angle=0, fontface=2)+
-  annotate("text", x = as.Date("2021-09-01"), y = 0.3, label = "1 dose", col = "darkorchid", angle=0, fontface=2)+
-  annotate("text", x = as.Date("2021-11-01"), y = 0.3, label = "2+ doses", col = palette.colors(2)[2], angle=0, fontface=2)+
+  annotate("text", x = as.Date("2021-09-01"), y = 0.25, label = "0 doses", col = "darkgrey", angle=0, fontface=2)+
+  annotate("text", x = as.Date("2021-11-15"), y = 0.25, label = "1 dose", col = "darkorchid", angle=0, fontface=2)+
+  annotate("text", x = as.Date("2021-11-01"), y = 0.6, label = "2+ doses", col = palette.colors(2)[2], angle=0, fontface=2)+
   annotate("text", x = as.Date("2021-06-23"), y = 0.75, label = "Step 1", angle=90, col  ="darkgrey", fontface=2)+
   annotate("text", x = as.Date("2021-07-23"), y = 0.75, label = "Step 2", angle=90, col  ="darkgrey", fontface=2)+
   annotate("text", x = as.Date("2021-09-23"), y = 0.75, label = "Step 2a", angle=90, col  ="darkgrey", fontface=2)+
@@ -373,7 +373,7 @@ g.vax =ggplot(data,aes(as.Date(date),group=1)) +
   theme_classic() + theme(axis.text.x = element_text(angle = 90, size=rel(1)), legend.title = element_blank(),legend.text=element_text(size=rel(1.2)),plot.title=element_text(size=rel(1.2)),axis.title = element_text(size=rel(1)))
 
 g.NPIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
-  geom_ribbon(aes(ymax = NPIs, ymin = 0), fill="black", alpha =.1)+
+  #geom_ribbon(aes(ymax = NPIs, ymin = 0), fill="black", alpha =.1)+
   geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
@@ -393,9 +393,9 @@ g.NPIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
 
 g.PIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
   #geom_ribbon(aes(ymax = NL.original, ymin = 0), fill="grey", alpha = 0.3)+
-  geom_ribbon(aes(ymax = NL.alpha, ymin = 0), fill=palette.colors(4)[4], alpha = 0.3)+
-  geom_ribbon(aes(ymax = NL.delta, ymin = NL.alpha), fill=palette.colors(3)[3],alpha=0.3)+
-  geom_ribbon(aes(ymax = NL.omicron, ymin = NL.delta), fill=palette.colors(7)[7], alpha = 0.3)+
+  #geom_ribbon(aes(ymax = NL.alpha, ymin = 0), fill=palette.colors(4)[4], alpha = 0.3)+
+  #geom_ribbon(aes(ymax = NL.delta, ymin = NL.alpha), fill=palette.colors(3)[3],alpha=0.3)+
+  #geom_ribbon(aes(ymax = NL.omicron, ymin = NL.delta), fill=palette.colors(7)[7], alpha = 0.3)+
   geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1)), aes(x = x, y = y),lty=2, col = "darkgrey")+
@@ -423,8 +423,29 @@ g.PIs =ggplot(PIs.NPIs,aes(as.Date(date),group=1)) +
 g.NPIs + g.PIs +plot_annotation(tag_levels = 'A', title = "NL community measures",theme = theme(plot.title = element_text(hjust = 0.5,face = "bold")))
 ggsave("community.png", width = 8, height=4)
 
+# For plotting the shading under the plot
+val = which(E.spillovers$omicron-E.spillovers$delta>0)
+min.omicron=rep(0,length(E.spillovers[,1]))
+max.omicron = min.omicron
+min.omicron[val] = E.spillovers$delta[val]
+max.omicron[val] = E.spillovers$omicron[val]
+val = which(E.spillovers$delta-E.spillovers$alpha>0)
+min.delta=rep(0,length(E.spillovers[,1]))
+max.delta = min.delta
+min.delta[val] = E.spillovers$alpha[val]
+max.delta[val] = E.spillovers$delta[val]
+val = which(E.spillovers$alpha-E.spillovers$original>0)
+min.alpha=rep(0,length(E.spillovers[,1]))
+max.alpha = min.alpha
+min.alpha[val] = E.spillovers$original[val]
+max.alpha[val] = E.spillovers$alpha[val]
+
 # 7 day rolling mean (daily) x 7 days/week
 g1 = ggplot(E.spillovers,aes(as.Date(date),group=1))+
+  geom_ribbon(aes(ymax = 7*max.omicron, ymin = 7*min.omicron), fill=palette.colors(7)[7], alpha = 0.2)+
+  geom_ribbon(aes(ymax = 7*max.delta, ymin = 7*min.delta), fill=palette.colors(3)[3], alpha = 0.2)+
+  geom_ribbon(aes(ymax = 7*max.alpha, ymin = 7*min.alpha), fill=palette.colors(4)[4], alpha = 0.2)+
+  geom_ribbon(aes(ymax = 7*original, ymin = 0), fill="grey", alpha = 0.2)+
   geom_line(data = data.frame(x = c(as.Date("2021-07-01"), as.Date("2021-07-01")), y = c(0, 1.8)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 1.8)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 1.8)), aes(x = x, y = y),lty=2, col = "darkgrey")+
@@ -468,10 +489,14 @@ g.n =ggplot(n.variant,aes(as.Date(date),group=1)) +
   geom_line(data = data.frame(x = c(as.Date("2021-08-01"), as.Date("2021-08-01")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-09-30"), as.Date("2021-09-30")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = "darkgrey")+
   geom_line(data = data.frame(x = c(as.Date("2021-12-21"), as.Date("2021-12-21")), y = c(0, 10)), aes(x = x, y = y),lty=2, col = "darkgrey")+
-  geom_ribbon(aes(ymax = alpha+delta+omicron+original, ymin=alpha+delta+original), fill=palette.colors(7)[7], alpha=.8)+
-  geom_ribbon(aes(ymax = alpha+delta+original, ymin=alpha+original), fill=palette.colors(3)[3], alpha=.8)+
-  geom_ribbon(aes(ymax = alpha+original, ymin=original), fill=palette.colors(4)[4], alpha=.8)+
-  geom_ribbon(aes(ymax = original, ymin=0), fill="grey", alpha=.8)+
+  geom_line(aes(y = alpha+delta+omicron+original), col=palette.colors(7)[7])+
+  geom_line(aes(y = alpha+delta+original), col=palette.colors(3)[3])+
+  geom_line(aes(y = alpha+original), col=palette.colors(4)[4])+
+  geom_line(aes(y = original), col="grey")+
+  geom_ribbon(aes(ymax = alpha+delta+omicron+original, ymin=alpha+delta+original), fill=palette.colors(7)[7], alpha=.3)+
+  geom_ribbon(aes(ymax = alpha+delta+original, ymin=alpha+original), fill=palette.colors(3)[3], alpha=.3)+
+  geom_ribbon(aes(ymax = alpha+original, ymin=original), fill=palette.colors(4)[4], alpha=.3)+
+  geom_ribbon(aes(ymax = original, ymin=0), fill="grey", alpha=.3)+
   scale_x_date(breaks = date_breaks("1 month"),
                labels = date_format("%b %Y"),limits = c(as.Date("2021-01-01"), as.Date("2021-12-24")))+
   #scale_y_continuous(trans='log2')+
