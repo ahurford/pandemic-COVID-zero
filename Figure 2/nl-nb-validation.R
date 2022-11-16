@@ -63,10 +63,8 @@ MB2 = rollmean(CCODWG$MB_new,14)
 SK2 = rollmean(CCODWG$SK_new,14)
 NB2 = rollmean(CCODWG$NB_new,14)
 
-
 mod = glm.cons(NL_travel ~ ON2+AB2+NS2+QC2+BC2+SK2+NB2+MB2,cons=1,family = "poisson")
 mod = glm.cons(NL_travel ~ NS2,cons=1,family = "poisson")
-
 
 NS = tail(new$NS_new,-13)
 intcp = coef(mod)[1]
